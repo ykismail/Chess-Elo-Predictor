@@ -39,7 +39,7 @@ opening theory, and Stockfish engine evaluations across two merged real-world da
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/ykismail/Chess-Elo-Predictor
 cd project
 
 # Install dependencies
@@ -67,10 +67,6 @@ pytest     = "^7.4"
 ---
 
 ## Running the Pipeline
-
-```bash
-poetry run jupyter notebook notebooks/chess_data_pipeline.ipynb
-```
 
 Run all cells top to bottom. The notebook will:
 
