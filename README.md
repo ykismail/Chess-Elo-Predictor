@@ -10,8 +10,11 @@ opening theory, and Stockfish engine evaluations across two merged real-world da
 ## Team
 
 > Youssuf Kamel 1220298
+
 > Hana Akabawy
+
 > Nour Eldeen Hassan
+
 > Abdelrahman Ashraf
 
 ---
@@ -53,15 +56,12 @@ poetry shell
 
 ```toml
 [tool.poetry.dependencies]
-python     = "^3.10"
+python     = "^3.11"
 pandas     = "^2.0"
 numpy      = "^1.25"
 python-chess = "^1.10"
 requests   = "^2.31"
 jupyter    = "^1.0"
-scikit-learn = "^1.3"
-mlflow     = "^2.9"
-pytest     = "^7.4"
 ```
 
 ---
