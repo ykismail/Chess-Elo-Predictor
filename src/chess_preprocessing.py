@@ -484,7 +484,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 # 6. LICHESS CSV INTEGRATION
 # ══════════════════════════════════════════════════════════════════════════════
 
-def load_lichess(filepath: str) -> pd.DataFrame:
+def load_lichess(filepath: str, stockfish_path: str) -> pd.DataFrame:
     """
     Load chess_games.csv (Lichess) and harmonise columns to match the PGN pipeline schema.
 
@@ -531,26 +531,33 @@ def load_lichess(filepath: str) -> pd.DataFrame:
     out["winner_multiclass"] = df_l["winner"].map({"Black": 0, "Draw": 1, "White": 2})
     out["winner_binary"]     = df_l["winner"].map({"White": 1, "Black": 0})
 
+    # ── Stockfish features (from lichess_stockfish.csv) ─────────────────────
+    df_sf = extract_stockfish_features(stockfish_path)
+    df_sf = df_sf.rename(columns={"event_id": "game_id"})
+    df_l  = df_l.merge(df_sf, on="game_id", how="left")
+
     stockfish_cols = [
         "white_acl", "black_acl", "white_blunders", "black_blunders",
         "white_mistakes", "black_mistakes", "final_eval",
-        "max_white_advantage", "max_black_advantage", "game_sharpness", "acl_gap"
+        "max_white_advantage", "max_black_advantage", "game_sharpness",
     ]
     for col in stockfish_cols:
-        out[col] = np.nan
+        out[col] = df_l[col] if col in df_l.columns else np.nan
+
+    out["acl_gap"] = (out["white_acl"] - out["black_acl"]).round(2)
 
     out["white_castled"]     = np.nan
     out["black_castled"]     = np.nan
     out["white_castle_side"] = np.nan
     out["black_castle_side"] = np.nan
     out["num_captures"]      = np.nan
-    out["has_stockfish"]     = False
+    out["has_stockfish"]     = out["white_acl"].notna()
 
     print(f"Harmonised columns: {list(out.columns)}")
     return out
 
 
-def integrate_datasets(df_pgn_pipeline: pd.DataFrame, lichess_path: str) -> pd.DataFrame:
+def integrate_datasets(df_pgn_pipeline: pd.DataFrame, lichess_path: str, lichess_sf_path: str) -> pd.DataFrame:
     """
     Concatenate the PGN pipeline output with the Lichess CSV dataset.
 
@@ -558,6 +565,7 @@ def integrate_datasets(df_pgn_pipeline: pd.DataFrame, lichess_path: str) -> pd.D
     ----------
     df_pgn_pipeline : pd.DataFrame — output of engineer_features()
     lichess_path    : str          — path to chess_games.csv
+    lichess_sf_path : str          — path to lichess_stockfish.csv
 
     Returns
     -------
@@ -567,7 +575,7 @@ def integrate_datasets(df_pgn_pipeline: pd.DataFrame, lichess_path: str) -> pd.D
     df_pgn_tagged["source"]        = "kaggle_pgn"
     df_pgn_tagged["has_stockfish"] = True
 
-    df_lichess   = load_lichess(lichess_path)
+    df_lichess   = load_lichess(lichess_path, lichess_sf_path)
     df_combined  = pd.concat([df_pgn_tagged, df_lichess], ignore_index=True, sort=False)
     df_combined["event_id"] = range(1, len(df_combined) + 1)
 
