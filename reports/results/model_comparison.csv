@@ -1,0 +1,11 @@
+model,track,test_f1_macro,test_weighted_accuracy,test_expert_recall,test_master_precision
+dummy,track_a,0.1938,0.2957,0.3859,0.0966
+logistic_regression,track_a,0.4646,0.5591,0.5669,0.378
+random_forest,track_a,0.5863,0.6828,0.7087,0.5114
+xgboost,track_a,0.5812,0.6981,0.8151,0.6167
+mlp,track_a,0.5239,0.6947,0.8151,0.6168
+dummy,track_b,0.1938,0.2957,0.3859,0.0966
+logistic_regression,track_b,0.491,0.5884,0.5897,0.4044
+random_forest,track_b,0.6128,0.7074,0.7519,0.574
+xgboost,track_b,0.6084,0.7256,0.8253,0.6572
+mlp,track_b,0.531,0.7043,0.797,0.6494
