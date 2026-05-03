@@ -47,6 +47,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
     print("Engineered features added.")
     print(f"\nElo bucket distribution (White):\n{df['elo_bucket_white'].value_counts().sort_index().to_string()}")
+    return df
 
 def validation_report(df: pd.DataFrame) -> None:
     """
