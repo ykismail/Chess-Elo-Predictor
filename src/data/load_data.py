@@ -443,18 +443,18 @@ def load_lichess(filepath: str, stockfish_path: str) -> pd.DataFrame:
     out["moves_san"] = df_l["moves"]
     out["moves_uci"] = np.nan
 
+    # ── Elo classification target ────────────────────────────────────────────
+    elo_bins   = [0, 1000, 1500, 2000, 2500, 9999]
+    elo_labels = ["Beginner", "Intermediate", "Advanced", "Expert", "Master"]
+    out["elo_bucket_white"] = pd.cut(df_l["white_rating"], bins=elo_bins, labels=elo_labels, right=False)
+    out["elo_bucket_black"] = pd.cut(df_l["black_rating"], bins=elo_bins, labels=elo_labels, right=False)
+
     # ── Ordinal encoding of target ────────────────────────────────────────────
     # Beginner=0, Intermediate=1, Advanced=2, Expert=3, Master=4
     ordinal_map = {"Beginner": 0, "Intermediate": 1, "Advanced": 2,
                    "Expert": 3, "Master": 4}
     out["elo_bucket_white_categorical"] = out["elo_bucket_white"].map(ordinal_map)
     out["elo_bucket_black_categorical"] = out["elo_bucket_black"].map(ordinal_map)
-
-    # ── Elo classification target ────────────────────────────────────────────
-    elo_bins   = [0, 1000, 1500, 2000, 2500, 9999]
-    elo_labels = ["Beginner", "Intermediate", "Advanced", "Expert", "Master"]
-    out["elo_bucket_white"] = pd.cut(df_l["white_rating"], bins=elo_bins, labels=elo_labels, right=False)
-    out["elo_bucket_black"] = pd.cut(df_l["black_rating"], bins=elo_bins, labels=elo_labels, right=False)
 
     # ── Winner target ─────────────────────────────────────────────────────────
     out["winner_multiclass"] = df_l["winner"].map({"Black": 0, "Draw": 1, "White": 2})
