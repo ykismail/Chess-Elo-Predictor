@@ -49,6 +49,8 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     print(f"\nElo bucket distribution (White):\n{df['elo_bucket_white'].value_counts().sort_index().to_string()}")
     return df
 
+    return df
+
 def validation_report(df: pd.DataFrame) -> None:
     """
     Print a comprehensive data validation report.
@@ -88,7 +90,30 @@ def validation_report(df: pd.DataFrame) -> None:
     numeric_cols = [c for c in ["white_elo", "black_elo", "num_moves", "white_acl",
                     "black_acl", "white_blunders", "black_blunders",
                     "acl_gap", "game_sharpness"] if c in df.columns]
-    print(df[numeric_cols].describe().round(2).to_string())
+    if numeric_cols:
+        print(df[numeric_cols].describe().round(2).to_string())
+
+        print("\n── Outliers (IQR Method) ───────────────────────────────────")
+        outliers_dict = {}
+        for col in numeric_cols:
+            Q1 = df[col].quantile(0.25)
+            Q3 = df[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            outlier_mask = (df[col] < lower_bound) | (df[col] > upper_bound)
+            outliers_dict[col] = outlier_mask.sum()
+        
+        outliers_df = pd.DataFrame(list(outliers_dict.items()), columns=["Column", "Outliers count"])
+        outliers_df["Pct (%)"] = (outliers_df["Outliers count"] / len(df) * 100).round(2)
+        outliers_df = outliers_df[outliers_df["Outliers count"] > 0]
+        
+        if outliers_df.empty:
+            print("No outliers detected in numeric columns.")
+        else:
+            print(outliers_df.to_string(index=False))
+    else:
+        print("No numeric columns found.")
 
     print("\n── Target: elo_bucket_white (categorical) ──────────────────")
     if "elo_bucket_white" in df.columns:

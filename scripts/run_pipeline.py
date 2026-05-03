@@ -25,7 +25,7 @@ from src.data.load_data import (
     parse_uci, extract_stockfish_features, merge_datasets,
     integrate_datasets, save_dataset,
 )
-from src.features.build_features import engineer_features
+from src.features.build_features import engineer_features, validation_report
 
 
 def main():
@@ -65,6 +65,8 @@ def main():
     print("\nStep 9 — Save")
     save_dataset(df,          p["games_output"])
     save_dataset(df_combined, p["merged_output"])
+    validation_report(df_combined)
+    
 
     print("\nPipeline complete.")
 
