@@ -1,0 +1,45 @@
+[project]
+name    = "chess_skill_classification"
+version = "1.0.0"
+team    = "Team 12"
+
+[paths]
+raw_data_dir       = "data/raw"
+interim_data_dir   = "data/interim"
+processed_data_dir = "data/processed"
+external_data_dir  = "data/external"
+models_dir         = "models"
+reports_dir        = "reports"
+figures_dir        = "reports/figures"
+
+[data]
+pgn_file              = "data/raw/data.pgn"
+uci_file              = "data/raw/data_uci.pgn"
+stockfish_file        = "data/raw/stockfish.csv"
+lichess_file          = "data/raw/chess_games.csv"
+lichess_sf_file       = "data/raw/lichess_stockfish.csv"
+eco_file              = "data/external/eco_openings.csv"
+games_output          = "data/processed/games.csv"
+merged_output         = "data/processed/merged_games.csv"
+
+[target]
+column       = "elo_bucket_white_enc"
+classes      = ["Beginner", "Intermediate", "Advanced", "Expert", "Master"]
+elo_bins     = [0, 1000, 1500, 2000, 2500, 9999]
+
+[preprocessing]
+test_size        = 0.30
+val_size         = 0.50
+random_state     = 42
+impute_strategy  = "median"
+leakage_cols     = [
+    "white_elo", "elo_gap", "avg_elo",
+    "elo_bucket_white", "elo_bucket_black", "elo_bucket_black_enc",
+    "winner_binary", "winner_multiclass",
+    "event_id", "source",
+    "moves_san", "moves_uci", "moves_pgn", "opening_name"
+]
+
+[mlflow]
+experiment_name = "chess_skill_classification"
+tracking_uri    = "mlruns"
