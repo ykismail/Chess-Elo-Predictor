@@ -1,129 +1,358 @@
 """
-src/models/train.py
-Model training and MLflow experiment logging for chess skill classification.
+train.py
+========
+Model training pipeline for chess skill classification.
 
-Functions
----------
-log_model_run  — train a sklearn model, evaluate, and log to MLflow
+Data context (from merged_games.csv):
+- 43,694 rows, 5-class target: elo_bucket_white
+- Severe class imbalance: Expert 38.9%, Beginner 0.6%
+- Target is pd.Categorical created by pd.cut on white_elo
+- All models use class_weight='balanced' where supported
+- Hyperparameters found via GridSearchCV on training split only
 """
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+import json
+import logging
+import os
+import pickle
+from pathlib import Path
+
 import mlflow
 import mlflow.sklearn
-
+import numpy as np
+import pandas as pd
+from dotenv import load_dotenv
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    accuracy_score, f1_score,
-    classification_report, confusion_matrix, ConfusionMatrixDisplay,
+    accuracy_score, classification_report,
+    confusion_matrix, f1_score,
+    precision_score, recall_score,
 )
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, StandardScaler
+from xgboost import XGBClassifier
 
-TARGET_NAMES = ["Beginner", "Intermediate", "Advanced", "Expert", "Master"]
+load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+log = logging.getLogger(__name__)
+
+ROOT        = Path(__file__).resolve().parents[2]
+DATA_PATH   = ROOT / "data" / "processed" / "merged_games.csv"
+CONFIG_PATH = ROOT / "configs" / "model_params.json"
+MODELS_DIR  = ROOT / "models"
+REPORTS_DIR = ROOT / "reports" / "results"
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def log_model_run(
-    model_name: str,
-    model,
-    params: dict,
-    X_train, y_train,
-    X_val,   y_val,
-    X_test,  y_test,
-):
+# ─────────────────────────────────────────────────────────────────────────────
+# Config & Data
+# ─────────────────────────────────────────────────────────────────────────────
+
+def load_config() -> dict:
+    with open(CONFIG_PATH) as f:
+        return json.load(f)
+
+
+def load_data(config: dict) -> pd.DataFrame:
+    df = pd.read_csv(DATA_PATH, low_memory=False)
+    log.info(f"Loaded {len(df):,} rows, {df.shape[1]} columns")
+
+    # Confirm target exists
+    assert config["target"] in df.columns, f"Target '{config['target']}' not found in CSV"
+
+    # Warn if leakage columns are still present (they should be excluded in prepare_xy)
+    present_leakage = [c for c in config["leakage_columns"] if c in df.columns]
+    if present_leakage:
+        log.warning(f"Leakage columns present in CSV (will be excluded from X): {present_leakage}")
+
+    return df
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Preprocessing
+# ─────────────────────────────────────────────────────────────────────────────
+
+def prepare_xy(df: pd.DataFrame, features: list, config: dict):
     """
-    Train a sklearn model, evaluate it on val and test sets,
-    and log all metrics, parameters, and artifacts to MLflow.
+    Build X and y from the merged DataFrame.
 
-    Standard metrics logged
-    -----------------------
-    train_accuracy, val_accuracy, test_accuracy, val_macro_f1, test_macro_f1
-
-    Business metrics logged
-    -----------------------
-    expert_recall    — Expert is the most populous class; misclassification
-                       has the widest matchmaking impact.
-    master_precision — Falsely labeling a player as Master produces the
-                       worst user experience.
-
-    Parameters
-    ----------
-    model_name : str        — display name for the MLflow run
-    model      : estimator  — untrained sklearn estimator
-    params     : dict       — hyperparameters to log
-    X_train / X_val / X_test : feature matrices (scaled)
-    y_train / y_val / y_test : ordinal target (0=Beginner … 4=Master)
-
-    Returns
-    -------
-    Trained model
+    Key decisions driven by data:
+    - elo_bucket_white is a pd.Categorical — convert to plain string for sklearn
+    - Categorical features (termination, eco_family, source) are label-encoded
+    - 18 rows have NaN Stockfish values — imputed with column median
+    - Leakage columns are explicitly excluded even if accidentally in features list
     """
-    with mlflow.start_run(run_name=model_name):
+    leakage = set(config["leakage_columns"])
+    safe_features = [f for f in features if f not in leakage and f in df.columns]
 
-        # ── Log hyperparameters ───────────────────────────────────────────────
-        mlflow.log_param("model_name", model_name)
-        for k, v in params.items():
-            mlflow.log_param(k, v)
+    if len(safe_features) < len(features):
+        dropped = set(features) - set(safe_features)
+        log.warning(f"Dropped from features (leakage or missing): {dropped}")
 
-        # ── Train ─────────────────────────────────────────────────────────────
+    X = df[safe_features].copy()
+    # elo_bucket_white is a pd.Categorical — sklearn needs plain strings
+    y = df[config["target"]].astype(str)
+
+    # Encode categorical columns
+    cat_cols = [c for c in ["termination", "eco_family", "source"] if c in X.columns]
+    for col in cat_cols:
+        le = LabelEncoder()
+        X[col] = le.fit_transform(X[col].astype(str))
+
+    # Impute numeric NaNs with median (18 Lichess games missing Stockfish)
+    for col in X.select_dtypes(include=np.number).columns:
+        if X[col].isna().any():
+            median_val = X[col].median()
+            X[col] = X[col].fillna(median_val)
+            log.info(f"  Imputed {col} NaNs with median={median_val:.2f}")
+
+    log.info(f"X shape: {X.shape}, y distribution:\n{y.value_counts().to_string()}")
+    return X, y
+
+
+def stratified_split(X, y, config: dict):
+    rs        = config["random_state"]
+    test_size = config["test_size"]
+    val_size  = config["val_size"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=rs, stratify=y
+    )
+    val_relative = val_size / (1 - test_size)
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train, y_train, test_size=val_relative, random_state=rs, stratify=y_train
+    )
+    log.info(
+        f"Split sizes — train: {len(X_train):,}  val: {len(X_val):,}  test: {len(X_test):,}"
+    )
+    # Log Beginner count in each split — key check given 247 total Beginner rows
+    for name, y_s in [("train", y_train), ("val", y_val), ("test", y_test)]:
+        beginner_n = (y_s == "Beginner").sum()
+        log.info(f"  {name} Beginner count: {beginner_n}")
+
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Model Definitions — justified by data characteristics
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_models(config: dict) -> dict:
+    rs = config["random_state"]
+
+    return {
+        "dummy": DummyClassifier(strategy="stratified", random_state=rs),
+
+        "logistic_regression": Pipeline([
+            ("scaler", StandardScaler()),
+            ("clf", LogisticRegression(
+                class_weight="balanced",
+                max_iter=1000,
+                random_state=rs,
+            )),
+        ]),
+
+        "random_forest": RandomForestClassifier(
+            class_weight="balanced",
+            random_state=rs,
+            n_jobs=-1,
+        ),
+
+        "xgboost": XGBClassifier(
+            eval_metric="mlogloss",
+            random_state=rs,
+            n_jobs=-1,
+        ),
+
+        "mlp": Pipeline([
+            ("scaler", StandardScaler()),
+            ("clf", MLPClassifier(
+                random_state=rs,
+                early_stopping=False,
+                max_iter=300,
+            )),
+        ]),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Hyperparameter Tuning
+# ─────────────────────────────────────────────────────────────────────────────
+
+def tune_model(model_name: str, model, X_train, y_train, config: dict, label_encoder=None):
+    """
+    Run GridSearchCV on the training split only.
+    Dummy has no hyperparameters — returned as-is.
+    XGBoost requires numeric labels — uses label_encoder if provided.
+    """
+    if model_name == "dummy":
         model.fit(X_train, y_train)
+        return model, {}
 
-        # ── Predict ───────────────────────────────────────────────────────────
-        y_pred_train = model.predict(X_train)
-        y_pred_val   = model.predict(X_val)
-        y_pred_test  = model.predict(X_test)
+    param_grid = config["param_grids"].get(model_name, {})
+    if not param_grid:
+        log.info(f"  No param grid for {model_name}, fitting directly.")
+        train_y = label_encoder.transform(y_train) if label_encoder else y_train
+        model.fit(X_train, train_y)
+        return model, {}
 
-        # ── Standard metrics ──────────────────────────────────────────────────
-        train_acc     = accuracy_score(y_train, y_pred_train)
-        val_acc       = accuracy_score(y_val,   y_pred_val)
-        test_acc      = accuracy_score(y_test,  y_pred_test)
-        val_macro_f1  = f1_score(y_val,  y_pred_val,  average="macro")
-        test_macro_f1 = f1_score(y_test, y_pred_test, average="macro")
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=config["random_state"])
 
-        mlflow.log_metric("train_accuracy",  train_acc)
-        mlflow.log_metric("val_accuracy",    val_acc)
-        mlflow.log_metric("test_accuracy",   test_acc)
-        mlflow.log_metric("val_macro_f1",    val_macro_f1)
-        mlflow.log_metric("test_macro_f1",   test_macro_f1)
+    # XGBoost needs numeric labels
+    train_y = label_encoder.transform(y_train) if label_encoder else y_train
 
-        # ── Business metrics ──────────────────────────────────────────────────
-        report = classification_report(
-            y_val, y_pred_val,
-            target_names=TARGET_NAMES,
-            output_dict=True,
-        )
-        expert_recall    = report["Expert"]["recall"]
-        master_precision = report["Master"]["precision"]
+    search = GridSearchCV(
+        estimator=model,
+        param_grid=param_grid,
+        scoring="f1_macro",
+        cv=cv,
+        n_jobs=-1,
+        verbose=1,
+        refit=True,
+    )
+    search.fit(X_train, train_y)
+    log.info(f"  Best params for {model_name}: {search.best_params_}")
+    log.info(f"  Best CV f1_macro: {search.best_score_:.4f}")
+    return search.best_estimator_, search.best_params_
 
-        mlflow.log_metric("expert_recall",    expert_recall)
-        mlflow.log_metric("master_precision", master_precision)
 
-        # ── Save model artifact ───────────────────────────────────────────────
-        mlflow.sklearn.log_model(model, artifact_path="model")
+# ─────────────────────────────────────────────────────────────────────────────
+# Metrics
+# ─────────────────────────────────────────────────────────────────────────────
 
-        # ── Confusion matrix artifact ─────────────────────────────────────────
-        cm  = confusion_matrix(y_test, y_pred_test)
-        fig, ax = plt.subplots(figsize=(7, 5))
-        ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=TARGET_NAMES).plot(
-            ax=ax, colorbar=False, cmap="Blues"
-        )
-        ax.set_title(f"{model_name} — Test Confusion Matrix")
-        plt.tight_layout()
-        cm_path = f"reports/figures/cm_{model_name.replace(' ', '_')}.png"
-        fig.savefig(cm_path, dpi=120)
-        mlflow.log_artifact(cm_path)
-        plt.show()
+def compute_metrics(y_true, y_pred) -> dict:
+    return {
+        "f1_macro":          round(f1_score(y_true, y_pred, average="macro",    zero_division=0), 4),
+        "weighted_accuracy": round(accuracy_score(y_true, y_pred), 4),
+        "expert_recall":     round(recall_score(
+            y_true, y_pred, labels=["Expert"],  average="macro", zero_division=0), 4),
+        "master_precision":  round(precision_score(
+            y_true, y_pred, labels=["Master"],  average="macro", zero_division=0), 4),
+    }
 
-        # ── Console summary ───────────────────────────────────────────────────
-        print(f"\n{'='*55}")
-        print(f"  {model_name}")
-        print(f"{'='*55}")
-        print(f"  Train accuracy    : {train_acc:.4f}")
-        print(f"  Val   accuracy    : {val_acc:.4f}")
-        print(f"  Test  accuracy    : {test_acc:.4f}")
-        print(f"  Val   macro F1    : {val_macro_f1:.4f}")
-        print(f"  Test  macro F1    : {test_macro_f1:.4f}")
-        print(f"  Expert recall     : {expert_recall:.4f}  (business)")
-        print(f"  Master precision  : {master_precision:.4f}  (business)")
-        print(f"\nClassification Report (val):")
-        print(classification_report(y_val, y_pred_val, target_names=TARGET_NAMES))
 
-    return model
+def compute_metrics_encoded(y_true_enc, y_pred_enc, label_encoder) -> dict:
+    """Decode numeric XGBoost predictions back to string labels before computing metrics."""
+    y_true = label_encoder.inverse_transform(y_true_enc)
+    y_pred = label_encoder.inverse_transform(y_pred_enc)
+    return compute_metrics(y_true, y_pred)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main Training Loop
+# ─────────────────────────────────────────────────────────────────────────────
+
+def train_all(config: dict) -> pd.DataFrame:
+    df = load_data(config)
+
+    tracks = {
+        "track_a": config["track_a_features"],
+        "track_b": config["track_b_features"],
+    }
+
+    all_results = []
+    mlflow.set_experiment("chess_skill_classification")
+
+    for track_name, features in tracks.items():
+        log.info(f"\n{'='*60}\nTRACK: {track_name.upper()} ({len(features)} features)\n{'='*60}")
+
+        X, y = prepare_xy(df, features, config)
+        X_train, X_val, X_test, y_train, y_val, y_test = stratified_split(X, y, config)
+
+        # Fit a global label encoder for XGBoost (needs numeric labels)
+        global_le = LabelEncoder()
+        global_le.fit(y)
+
+        models = build_models(config)
+
+        for model_name, model in models.items():
+            log.info(f"\n  ── {model_name.upper()} ──")
+
+            # XGBoost requires numeric labels
+            is_xgb = model_name == "xgboost"
+            le = global_le if is_xgb else None
+
+            with mlflow.start_run(run_name=f"{model_name}_{track_name}"):
+
+                best_model, best_params = tune_model(
+                    model_name, model, X_train, y_train, config, label_encoder=le
+                )
+
+                mlflow.log_param("model",      model_name)
+                mlflow.log_param("track",      track_name)
+                mlflow.log_param("n_features", len(features))
+                mlflow.log_param("n_train",    len(X_train))
+                mlflow.log_param("class_imbalance_handling", "class_weight=balanced + stratified_kfold")
+                for k, v in best_params.items():
+                    mlflow.log_param(k, v)
+
+                for split_name, X_s, y_s in [
+                    ("train", X_train, y_train),
+                    ("val",   X_val,   y_val),
+                    ("test",  X_test,  y_test),
+                ]:
+                    if is_xgb:
+                        y_s_enc   = le.transform(y_s)
+                        y_pred    = best_model.predict(X_s)
+                        metrics   = compute_metrics_encoded(y_s_enc, y_pred, le)
+                    else:
+                        y_pred  = best_model.predict(X_s)
+                        metrics = compute_metrics(y_s, y_pred)
+
+                    for k, v in metrics.items():
+                        mlflow.log_metric(f"{split_name}_{k}", v)
+
+                    if split_name == "test":
+                        log.info(f"  TEST → {metrics}")
+                        all_results.append({
+                            "model": model_name,
+                            "track": track_name,
+                            **{f"test_{k}": v for k, v in metrics.items()},
+                        })
+
+                # Classification report
+                if is_xgb:
+                    y_pred_test     = best_model.predict(X_test)
+                    y_pred_test_str = le.inverse_transform(y_pred_test)
+                    report = classification_report(
+                        y_test, y_pred_test_str,
+                        target_names=config["class_order"],
+                        zero_division=0
+                    )
+                else:
+                    y_pred_test = best_model.predict(X_test)
+                    report = classification_report(
+                        y_test, y_pred_test,
+                        target_names=config["class_order"],
+                        zero_division=0
+                    )
+
+                report_path = REPORTS_DIR / f"{model_name}_{track_name}_report.txt"
+                report_path.write_text(report)
+                mlflow.log_artifact(str(report_path))
+
+                mlflow.sklearn.log_model(best_model, artifact_path=f"{model_name}_{track_name}")
+                pkl_path = MODELS_DIR / f"{model_name}_{track_name}.pkl"
+                with open(pkl_path, "wb") as f:
+                    pickle.dump(best_model, f)
+                log.info(f"  Saved model to {pkl_path}")
+
+    results_df = pd.DataFrame(all_results)
+    results_path = REPORTS_DIR / "model_comparison.csv"
+    results_df.to_csv(results_path, index=False)
+    log.info(f"\nComparison table:\n{results_df.to_string(index=False)}")
+    return results_df
+
+
+if __name__ == "__main__":
+    cfg = load_config()
+    train_all(cfg)

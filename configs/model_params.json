@@ -1,37 +1,42 @@
 {
-  "dummy": {
-    "strategy": "stratified",
-    "random_state": 42
-  },
-  "logistic_regression": {
-    "C": 1.0,
-    "max_iter": 1000,
-    "solver": "lbfgs",
-    "multi_class": "multinomial",
-    "class_weight": "balanced",
-    "random_state": 42
-  },
-  "random_forest": {
-    "n_estimators": 200,
-    "max_depth": null,
-    "min_samples_split": 5,
-    "class_weight": "balanced",
-    "random_state": 42,
-    "n_jobs": -1
-  },
-  "xgboost": {
-    "n_estimators": 300,
-    "max_depth": 6,
-    "learning_rate": 0.1,
-    "subsample": 0.8,
-    "colsample_bytree": 0.8,
-    "random_state": 42,
-    "n_jobs": -1
-  },
-  "svm": {
-    "C": 1.0,
-    "kernel": "rbf",
-    "class_weight": "balanced",
-    "random_state": 42
+  "random_state": 42,
+  "test_size": 0.15,
+  "val_size": 0.15,
+  "target": "elo_bucket_white",
+  "class_order": ["Beginner", "Intermediate", "Advanced", "Expert", "Master"],
+  "leakage_columns": ["white_elo", "avg_elo", "elo_gap", "elo_bucket_black",
+                      "white_elo", "moves_san", "eco_code", "opening_name",
+                      "event_id", "result", "winner_binary", "winner_multiclass"],
+
+  "track_a_features": [
+    "black_elo", "num_moves", "termination", "eco_family", "acl_gap", "source"
+  ],
+  "track_b_features": [
+    "black_elo", "num_moves", "termination", "eco_family", "acl_gap", "source",
+    "white_acl", "black_acl", "white_blunders", "black_blunders",
+    "white_mistakes", "black_mistakes", "final_eval",
+    "max_white_advantage", "max_black_advantage", "game_sharpness"
+  ],
+
+  "param_grids": {
+    "logistic_regression": {
+      "clf__C": [0.01, 0.1, 1.0, 10.0],
+      "clf__solver": ["lbfgs", "saga"]
+    },
+    "random_forest": {
+      "n_estimators": [100, 200],
+      "max_depth": [10, 20, null],
+      "min_samples_leaf": [1, 5]
+    },
+    "xgboost": {
+      "n_estimators": [200, 300],
+      "max_depth": [4, 6],
+      "learning_rate": [0.05, 0.1],
+      "subsample": [0.8, 1.0]
+    },
+    "mlp": {
+      "clf__hidden_layer_sizes": [[64, 32], [128, 64]],
+      "clf__alpha": [0.0001, 0.001]
+    }
   }
 }

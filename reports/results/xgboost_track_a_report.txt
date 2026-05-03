@@ -1,0 +1,11 @@
+              precision    recall  f1-score   support
+
+    Beginner       0.70      0.67      0.68      2208
+Intermediate       0.70      0.19      0.30        37
+    Advanced       0.71      0.82      0.76      2547
+      Expert       0.69      0.68      0.69      1093
+      Master       0.62      0.39      0.48       670
+
+    accuracy                           0.70      6555
+   macro avg       0.68      0.55      0.58      6555
+weighted avg       0.69      0.70      0.69      6555
