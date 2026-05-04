@@ -197,10 +197,8 @@ def build_models(config: dict) -> dict:
             ("scaler", StandardScaler()),
             ("clf", MLPClassifier(
                 random_state=rs,
-                early_stopping=True,
-                validation_fraction=0.1,
-                n_iter_no_change=15,
-                max_iter=500,
+                early_stopping=False,
+                max_iter=300,
             )),
         ]),
     }
