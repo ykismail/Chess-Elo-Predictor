@@ -61,7 +61,7 @@ def load_model(model_name: str):
     return model
 
 
-def prepare_features(df: pd.DataFrame, features: list, config: dict) -> pd.DataFrame:
+def prepare_features(df: pd.DataFrame, features: list, config: dict, cat_encoders: dict) -> pd.DataFrame:
     """Prepare feature matrix X — mirrors train.py's prepare_xy (X part only)."""
     leakage = set(config["leakage_columns"])
     safe_features = [f for f in features if f not in leakage and f in df.columns]
@@ -73,9 +73,19 @@ def prepare_features(df: pd.DataFrame, features: list, config: dict) -> pd.DataF
     X = df[safe_features].copy()
 
     cat_cols = [c for c in ["termination", "eco_family", "source"] if c in X.columns]
+
+    
     for col in cat_cols:
-        le = LabelEncoder()
-        X[col] = le.fit_transform(X[col].astype(str))
+        if col in cat_encoders:
+            # use the encoder from training — handles unseen categories safely
+            le = cat_encoders[col]
+            known = set(le.classes_)
+            X[col] = X[col].astype(str).apply(
+                lambda v: v if v in known else le.classes_[0]  # fallback to first class
+            )
+            X[col] = le.transform(X[col])
+        else:
+            X[col] = LabelEncoder().fit_transform(X[col].astype(str))
 
     for col in X.select_dtypes(include=np.number).columns:
         if X[col].isna().any():

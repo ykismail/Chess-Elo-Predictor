@@ -38,6 +38,9 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, StandardScaler
 from xgboost import XGBClassifier
+from imblearn.over_sampling import SMOTE
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.utils.class_weight import compute_sample_weight
 
 load_dotenv()
 
@@ -115,6 +118,12 @@ def prepare_xy(df: pd.DataFrame, features: list, config: dict):
     for col in cat_cols:
         le = LabelEncoder()
         X[col] = le.fit_transform(X[col].astype(str))
+    
+    cat_encoders = {}
+    for col in cat_cols:
+        le = LabelEncoder()
+        X[col] = le.fit_transform(X[col].astype(str))
+        cat_encoders[col] = le 
 
     # Impute numeric NaNs with median (18 Lichess games missing Stockfish)
     for col in X.select_dtypes(include=np.number).columns:
@@ -124,7 +133,7 @@ def prepare_xy(df: pd.DataFrame, features: list, config: dict):
             log.info(f"  Imputed {col} NaNs with median={median_val:.2f}")
 
     log.info(f"X shape: {X.shape}, y distribution:\n{y.value_counts().to_string()}")
-    return X, y
+    return X, y, cat_encoders
 
 
 def stratified_split(X, y, config: dict):
@@ -183,19 +192,17 @@ def build_models(config: dict) -> dict:
             random_state=rs,
             n_jobs=-1,
         ),
-        "mlp": Pipeline(
-            [
-                ("scaler", StandardScaler()),
-                (
-                    "clf",
-                    MLPClassifier(
-                        random_state=rs,
-                        early_stopping=False,
-                        max_iter=300,
-                    ),
-                ),
-            ]
-        ),
+
+        "mlp": Pipeline([
+            ("scaler", StandardScaler()),
+            ("clf", MLPClassifier(
+                random_state=rs,
+                early_stopping=True,
+                validation_fraction=0.1,
+                n_iter_no_change=15,
+                max_iter=500,
+            )),
+        ]),
     }
 
 
@@ -223,10 +230,29 @@ def tune_model(
         model.fit(X_train, train_y)
         return model, {}
 
-    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=config["random_state"])
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=config["random_state"])
 
-    # XGBoost needs numeric labels
     train_y = label_encoder.transform(y_train) if label_encoder else y_train
+
+    # ── NEW: MLP and LR need sample_weight since they can't use class_weight ──
+    # This block must come BEFORE GridSearchCV is created and called
+    if model_name in ("mlp", "logistic_regression"):
+        sample_weight = compute_sample_weight("balanced", y_train)
+        search = GridSearchCV(
+            estimator=model,
+            param_grid=param_grid,
+            scoring="f1_macro",
+            cv=cv,
+            n_jobs=-1,
+            verbose=1,
+            refit=True,
+        )
+        # Pipeline expects clf__sample_weight not sample_weight
+        search.fit(X_train, train_y, clf__sample_weight=sample_weight)
+        log.info(f"  Best params for {model_name}: {search.best_params_}")
+        log.info(f"  Best CV f1_macro: {search.best_score_:.4f}")
+        return search.best_estimator_, search.best_params_
+    # ── END NEW BLOCK ──────────────────────────────────────────────────────────
 
     search = GridSearchCV(
         estimator=model,
@@ -237,7 +263,14 @@ def tune_model(
         verbose=1,
         refit=True,
     )
-    search.fit(X_train, train_y)
+
+    # XGBoost sample_weight (from earlier suggestion)
+    if model_name == "xgboost":
+        sample_weight = compute_sample_weight("balanced", y_train)
+        search.fit(X_train, train_y, sample_weight=sample_weight)
+    else:
+        search.fit(X_train, train_y)
+
     log.info(f"  Best params for {model_name}: {search.best_params_}")
     log.info(f"  Best CV f1_macro: {search.best_score_:.4f}")
     return search.best_estimator_, search.best_params_
@@ -250,22 +283,12 @@ def tune_model(
 
 def compute_metrics(y_true, y_pred) -> dict:
     return {
-        "f1_macro": round(
-            f1_score(y_true, y_pred, average="macro", zero_division=0), 4
-        ),
-        "weighted_accuracy": round(accuracy_score(y_true, y_pred), 4),
-        "expert_recall": round(
-            recall_score(
-                y_true, y_pred, labels=["Expert"], average="macro", zero_division=0
-            ),
-            4,
-        ),
-        "master_precision": round(
-            precision_score(
-                y_true, y_pred, labels=["Master"], average="macro", zero_division=0
-            ),
-            4,
-        ),
+        "f1_macro":           round(f1_score(y_true, y_pred, average="macro", zero_division=0), 4),
+        "balanced_accuracy":  round(balanced_accuracy_score(y_true, y_pred), 4),   # add this
+        "weighted_accuracy":  round(accuracy_score(y_true, y_pred), 4),
+        "expert_recall":      round(recall_score(y_true, y_pred, labels=["Expert"],  average="macro", zero_division=0), 4),
+        "beginner_recall":    round(recall_score(y_true, y_pred, labels=["Beginner"], average="macro", zero_division=0), 4),  # track the problem class directly
+        "master_precision":   round(precision_score(y_true, y_pred, labels=["Master"], average="macro", zero_division=0), 4),
     }
 
 
@@ -297,8 +320,17 @@ def train_all(config: dict) -> pd.DataFrame:
             f"\n{'='*60}\nTRACK: {track_name.upper()} ({len(features)} features)\n{'='*60}"
         )
 
-        X, y = prepare_xy(df, features, config)
+        X, y, cat_encoders = prepare_xy(df, features, config)  # modify prepare_xy to return encoders
+        # save encoders per track
+        encoders_path = MODELS_DIR / f"cat_encoders_{track_name}.pkl"
+        with open(encoders_path, "wb") as f:
+            pickle.dump(cat_encoders, f)
         X_train, X_val, X_test, y_train, y_val, y_test = stratified_split(X, y, config)
+
+        # after stratified_split call:
+        sm = SMOTE(random_state=config["random_state"], k_neighbors=5)
+        X_train, y_train = sm.fit_resample(X_train, y_train)
+        log.info(f"After SMOTE — train shape: {X_train.shape}, y distribution:\n{pd.Series(y_train).value_counts().to_string()}")
 
         # Fit a global label encoder for XGBoost (needs numeric labels)
         global_le = LabelEncoder()
