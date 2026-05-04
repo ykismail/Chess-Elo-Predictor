@@ -23,7 +23,8 @@ jobs:
 
     - name: Install Poetry
       run: |
-        (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+        python -m pip install --upgrade pip
+        pip install poetry
       
     - name: Add Poetry to PATH
       run: echo "$env:USERPROFILE\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH
@@ -81,7 +82,8 @@ jobs:
 
       - name: Install Poetry
         run: |
-          (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+          python -m pip install --upgrade pip
+          pip install poetry
       
       - name: Add Poetry to PATH
         run: echo "$env:USERPROFILE\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH
