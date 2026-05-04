@@ -1,0 +1,95 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ Abdelrahman ]
+  pull_request:
+    branches: [ Abdelrahman ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14.4"]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+
+    - name: Install dependencies
+      run: |
+        poetry install
+
+    - name: Code Quality - Black Formatter Check
+      run: |
+        poetry run black --check .
+
+    - name: Code Quality - Flake8 Linter Check
+      run: |
+        poetry run flake8 .
+
+    - name: Run Tests with Pytest
+      run: |
+        poetry run pytest
+
+    - name: Run Data Pipeline
+      run: |
+        poetry run python scripts/run_pipeline.py
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: data-artifacts
+        path: |
+          data/intermediate/
+          reports/results/
+
+  cd:
+    needs: ci
+    if: github.ref == 'refs/heads/Abdelrahman' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.14.4'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+      
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Install stlite
+        run: poetry run pip install stlite
+
+      - name: Build static site
+        run: |
+          poetry run stlite build src/visualization/dashboard.py --dest dist
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
