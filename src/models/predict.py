@@ -128,7 +128,10 @@ def predict(model_name: str, input_path: str = None):
         df, y_true = get_test_split(config)
         log.info(f"Predicting on held-out test set ({len(df):,} rows)")
 
-    X = prepare_features(df, features, config)
+
+    cat_encoders = getattr(model, "cat_encoders", {})
+
+    X = prepare_features(df, features, config, cat_encoders=cat_encoders)
     log.info(f"Feature matrix shape: {X.shape}")
 
     if is_xgb:
