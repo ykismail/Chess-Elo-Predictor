@@ -14,7 +14,8 @@ dependencies = [
     "scikit-learn (>=1.8.0,<2.0.0)",
     "python-chess (>=1.999,<2.0)",
     "mlflow (>=3.10.1,<4.0.0)",
-    "kaggle (>=2.1.0,<3.0.0)"
+    "kaggle (>=2.1.0,<3.0.0)",
+    "imbalanced-learn (>=0.14.1,<0.15.0)"
 ]
 [tool.poetry]
 package-mode = false
