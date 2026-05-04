@@ -108,14 +108,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install stlite CLI (Node.js)
-        run: npm install -g @stlite/stlite
+
+    
+      - name: Install stlite (Python)
+        run: python -m poetry run pip install -U stlite
 
       - name: Build static site
-        run: |
-          # We use the Node version of stlite to "bake" the Python app into HTML/JS
-          stlite build src/visualization/dashboard.py --output dist    
-     
+        run: python -m poetry run stlite build src/visualization/dashboard.py --dest dist
+
 
       # - name: Build static site
       #   run: |
