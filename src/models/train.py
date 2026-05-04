@@ -26,9 +26,12 @@ from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    accuracy_score, classification_report,
-    confusion_matrix, f1_score,
-    precision_score, recall_score,
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
 )
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
 from sklearn.neural_network import MLPClassifier
@@ -42,15 +45,14 @@ from sklearn.utils.class_weight import compute_sample_weight
 load_dotenv()
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 log = logging.getLogger(__name__)
 
-ROOT        = Path(__file__).resolve().parents[2]
-DATA_PATH   = ROOT / "data" / "processed" / "merged_games.csv"
+ROOT = Path(__file__).resolve().parents[2]
+DATA_PATH = ROOT / "data" / "processed" / "merged_games.csv"
 CONFIG_PATH = ROOT / "configs" / "model_params.json"
-MODELS_DIR  = ROOT / "models"
+MODELS_DIR = ROOT / "models"
 REPORTS_DIR = ROOT / "reports" / "results"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -59,6 +61,7 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 # ─────────────────────────────────────────────────────────────────────────────
 # Config & Data
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def load_config() -> dict:
     with open(CONFIG_PATH) as f:
@@ -70,12 +73,16 @@ def load_data(config: dict) -> pd.DataFrame:
     log.info(f"Loaded {len(df):,} rows, {df.shape[1]} columns")
 
     # Confirm target exists
-    assert config["target"] in df.columns, f"Target '{config['target']}' not found in CSV"
+    assert (
+        config["target"] in df.columns
+    ), f"Target '{config['target']}' not found in CSV"
 
     # Warn if leakage columns are still present (they should be excluded in prepare_xy)
     present_leakage = [c for c in config["leakage_columns"] if c in df.columns]
     if present_leakage:
-        log.warning(f"Leakage columns present in CSV (will be excluded from X): {present_leakage}")
+        log.warning(
+            f"Leakage columns present in CSV (will be excluded from X): {present_leakage}"
+        )
 
     return df
 
@@ -83,6 +90,7 @@ def load_data(config: dict) -> pd.DataFrame:
 # ─────────────────────────────────────────────────────────────────────────────
 # Preprocessing
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def prepare_xy(df: pd.DataFrame, features: list, config: dict):
     """
@@ -129,9 +137,9 @@ def prepare_xy(df: pd.DataFrame, features: list, config: dict):
 
 
 def stratified_split(X, y, config: dict):
-    rs        = config["random_state"]
+    rs = config["random_state"]
     test_size = config["test_size"]
-    val_size  = config["val_size"]
+    val_size = config["val_size"]
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=rs, stratify=y
@@ -155,27 +163,30 @@ def stratified_split(X, y, config: dict):
 # Model Definitions — justified by data characteristics
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def build_models(config: dict) -> dict:
     rs = config["random_state"]
 
     return {
         "dummy": DummyClassifier(strategy="stratified", random_state=rs),
-
-        "logistic_regression": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(
-                class_weight="balanced",
-                max_iter=1000,
-                random_state=rs,
-            )),
-        ]),
-
+        "logistic_regression": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                (
+                    "clf",
+                    LogisticRegression(
+                        class_weight="balanced",
+                        max_iter=1000,
+                        random_state=rs,
+                    ),
+                ),
+            ]
+        ),
         "random_forest": RandomForestClassifier(
             class_weight="balanced",
             random_state=rs,
             n_jobs=-1,
         ),
-
         "xgboost": XGBClassifier(
             eval_metric="mlogloss",
             random_state=rs,
@@ -199,7 +210,10 @@ def build_models(config: dict) -> dict:
 # Hyperparameter Tuning
 # ─────────────────────────────────────────────────────────────────────────────
 
-def tune_model(model_name: str, model, X_train, y_train, config: dict, label_encoder=None):
+
+def tune_model(
+    model_name: str, model, X_train, y_train, config: dict, label_encoder=None
+):
     """
     Run GridSearchCV on the training split only.
     Dummy has no hyperparameters — returned as-is.
@@ -266,6 +280,7 @@ def tune_model(model_name: str, model, X_train, y_train, config: dict, label_enc
 # Metrics
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def compute_metrics(y_true, y_pred) -> dict:
     return {
         "f1_macro":           round(f1_score(y_true, y_pred, average="macro", zero_division=0), 4),
@@ -288,6 +303,7 @@ def compute_metrics_encoded(y_true_enc, y_pred_enc, label_encoder) -> dict:
 # Main Training Loop
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def train_all(config: dict) -> pd.DataFrame:
     df = load_data(config)
 
@@ -300,7 +316,9 @@ def train_all(config: dict) -> pd.DataFrame:
     mlflow.set_experiment("chess_skill_classification")
 
     for track_name, features in tracks.items():
-        log.info(f"\n{'='*60}\nTRACK: {track_name.upper()} ({len(features)} features)\n{'='*60}")
+        log.info(
+            f"\n{'='*60}\nTRACK: {track_name.upper()} ({len(features)} features)\n{'='*60}"
+        )
 
         X, y, cat_encoders = prepare_xy(df, features, config)  # modify prepare_xy to return encoders
         # save encoders per track
@@ -333,25 +351,28 @@ def train_all(config: dict) -> pd.DataFrame:
                     model_name, model, X_train, y_train, config, label_encoder=le
                 )
 
-                mlflow.log_param("model",      model_name)
-                mlflow.log_param("track",      track_name)
+                mlflow.log_param("model", model_name)
+                mlflow.log_param("track", track_name)
                 mlflow.log_param("n_features", len(features))
-                mlflow.log_param("n_train",    len(X_train))
-                mlflow.log_param("class_imbalance_handling", "class_weight=balanced + stratified_kfold")
+                mlflow.log_param("n_train", len(X_train))
+                mlflow.log_param(
+                    "class_imbalance_handling",
+                    "class_weight=balanced + stratified_kfold",
+                )
                 for k, v in best_params.items():
                     mlflow.log_param(k, v)
 
                 for split_name, X_s, y_s in [
                     ("train", X_train, y_train),
-                    ("val",   X_val,   y_val),
-                    ("test",  X_test,  y_test),
+                    ("val", X_val, y_val),
+                    ("test", X_test, y_test),
                 ]:
                     if is_xgb:
-                        y_s_enc   = le.transform(y_s)
-                        y_pred    = best_model.predict(X_s)
-                        metrics   = compute_metrics_encoded(y_s_enc, y_pred, le)
+                        y_s_enc = le.transform(y_s)
+                        y_pred = best_model.predict(X_s)
+                        metrics = compute_metrics_encoded(y_s_enc, y_pred, le)
                     else:
-                        y_pred  = best_model.predict(X_s)
+                        y_pred = best_model.predict(X_s)
                         metrics = compute_metrics(y_s, y_pred)
 
                     for k, v in metrics.items():
@@ -359,34 +380,40 @@ def train_all(config: dict) -> pd.DataFrame:
 
                     if split_name == "test":
                         log.info(f"  TEST → {metrics}")
-                        all_results.append({
-                            "model": model_name,
-                            "track": track_name,
-                            **{f"test_{k}": v for k, v in metrics.items()},
-                        })
+                        all_results.append(
+                            {
+                                "model": model_name,
+                                "track": track_name,
+                                **{f"test_{k}": v for k, v in metrics.items()},
+                            }
+                        )
 
                 # Classification report
                 if is_xgb:
-                    y_pred_test     = best_model.predict(X_test)
+                    y_pred_test = best_model.predict(X_test)
                     y_pred_test_str = le.inverse_transform(y_pred_test)
                     report = classification_report(
-                        y_test, y_pred_test_str,
+                        y_test,
+                        y_pred_test_str,
                         target_names=config["class_order"],
-                        zero_division=0
+                        zero_division=0,
                     )
                 else:
                     y_pred_test = best_model.predict(X_test)
                     report = classification_report(
-                        y_test, y_pred_test,
+                        y_test,
+                        y_pred_test,
                         target_names=config["class_order"],
-                        zero_division=0
+                        zero_division=0,
                     )
 
                 report_path = REPORTS_DIR / f"{model_name}_{track_name}_report.txt"
                 report_path.write_text(report)
                 mlflow.log_artifact(str(report_path))
 
-                mlflow.sklearn.log_model(best_model, artifact_path=f"{model_name}_{track_name}")
+                mlflow.sklearn.log_model(
+                    best_model, artifact_path=f"{model_name}_{track_name}"
+                )
                 pkl_path = MODELS_DIR / f"{model_name}_{track_name}.pkl"
                 with open(pkl_path, "wb") as f:
                     pickle.dump(best_model, f)

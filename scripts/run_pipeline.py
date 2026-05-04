@@ -17,13 +17,20 @@ Usage
 
 import sys
 import os
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import tomllib
 from src.data.load_data import (
-    download_eco_database, parse_pgn, build_eco_lookup, match_eco,
-    parse_uci, extract_stockfish_features, merge_datasets,
-    integrate_datasets, save_dataset,
+    download_eco_database,
+    parse_pgn,
+    build_eco_lookup,
+    match_eco,
+    parse_uci,
+    extract_stockfish_features,
+    merge_datasets,
+    integrate_datasets,
+    save_dataset,
 )
 from src.features.build_features import engineer_features, validation_report
 
@@ -35,15 +42,15 @@ def main():
     p = cfg["data"]
 
     print("Step 1 — ECO database")
-    df_eco    = download_eco_database(p["eco_file"])
+    df_eco = download_eco_database(p["eco_file"])
     eco_lookup = build_eco_lookup(df_eco)
 
     print("\nStep 2 — Parse PGN")
     df_pgn = parse_pgn(p["pgn_file"])
 
     print("\nStep 3 — ECO matching")
-    eco_results          = df_pgn["moves_san"].apply(lambda m: match_eco(m, eco_lookup))
-    df_pgn["eco_code"]   = eco_results.apply(lambda x: x[0])
+    eco_results = df_pgn["moves_san"].apply(lambda m: match_eco(m, eco_lookup))
+    df_pgn["eco_code"] = eco_results.apply(lambda x: x[0])
     df_pgn["opening_name"] = eco_results.apply(lambda x: x[1])
     df_pgn["eco_family"] = eco_results.apply(lambda x: x[2])
 
@@ -63,10 +70,9 @@ def main():
     df_combined = integrate_datasets(df, p["lichess_file"], p["lichess_sf_file"])
 
     print("\nStep 9 — Save")
-    save_dataset(df,          p["games_output"])
+    save_dataset(df, p["games_output"])
     save_dataset(df_combined, p["merged_output"])
     validation_report(df_combined)
-    
 
     print("\nPipeline complete.")
 

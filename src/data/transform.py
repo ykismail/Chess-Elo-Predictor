@@ -21,7 +21,7 @@ import os
 import sys
 
 # ── Path bootstrap ────────────────────────────────────────────────────────────
-script_dir  = os.path.dirname(os.path.abspath(__file__))
+script_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
 if project_dir not in sys.path:
     sys.path.insert(0, project_dir)
@@ -35,14 +35,15 @@ from load_data import (
 )
 
 # ── Directory paths ───────────────────────────────────────────────────────────
-raw_dir          = os.path.join(project_dir, "data", "raw")
+raw_dir = os.path.join(project_dir, "data", "raw")
 intermediate_dir = os.path.join(project_dir, "data", "intermediate")
-external_dir     = os.path.join(project_dir, "data", "external")
+external_dir = os.path.join(project_dir, "data", "external")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Load Phase-1 outputs
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def load_parsed_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -64,6 +65,7 @@ def load_parsed_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 # 2. ECO opening matching   (was commented block #1 in data_loading.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def apply_eco_matching(parsed_data_pgn: pd.DataFrame) -> pd.DataFrame:
     """
     Enrich parsed_data_pgn with ECO opening codes, names, and family letters
@@ -82,28 +84,29 @@ def apply_eco_matching(parsed_data_pgn: pd.DataFrame) -> pd.DataFrame:
     """
     eco_csv = os.path.join(external_dir, "eco_openings.csv")
     print(f"Loading ECO database from {eco_csv}...")
-    df_eco   = pd.read_csv(eco_csv)
+    df_eco = pd.read_csv(eco_csv)
     eco_lookup = build_eco_lookup(df_eco)
     print(f"  {len(eco_lookup):,} opening entries loaded into lookup.")
 
     print("Matching ECO codes to PGN games (longest-prefix)...")
-    eco_results = parsed_data_pgn["moves_san"].apply(
-        lambda m: match_eco(m, eco_lookup)
-    )
+    eco_results = parsed_data_pgn["moves_san"].apply(lambda m: match_eco(m, eco_lookup))
     parsed_data_pgn = parsed_data_pgn.copy()
-    parsed_data_pgn["eco_code"]     = eco_results.apply(lambda x: x[0])
+    parsed_data_pgn["eco_code"] = eco_results.apply(lambda x: x[0])
     parsed_data_pgn["opening_name"] = eco_results.apply(lambda x: x[1])
-    parsed_data_pgn["eco_family"]   = eco_results.apply(lambda x: x[2])
+    parsed_data_pgn["eco_family"] = eco_results.apply(lambda x: x[2])
 
     matched = (parsed_data_pgn["eco_code"] != "Unknown").sum()
-    print(f"  ECO matched : {matched:,} / {len(parsed_data_pgn):,} games "
-          f"({matched / len(parsed_data_pgn) * 100:.1f}%)")
+    print(
+        f"  ECO matched : {matched:,} / {len(parsed_data_pgn):,} games "
+        f"({matched / len(parsed_data_pgn) * 100:.1f}%)"
+    )
     return parsed_data_pgn
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. Stockfish feature extraction   (was commented block #2 in data_loading.py)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def load_stockfish_features() -> pd.DataFrame:
     """
@@ -133,6 +136,7 @@ def load_stockfish_features() -> pd.DataFrame:
 # 4. Merge: PGN + UCI + Stockfish
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def merge_kaggle_data(
     parsed_data_pgn: pd.DataFrame,
     parsed_data_uci: pd.DataFrame,
@@ -160,6 +164,7 @@ def merge_kaggle_data(
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. Save
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def save_kaggle_merged(df_kaggle: pd.DataFrame) -> None:
     """

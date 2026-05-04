@@ -29,15 +29,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 log = logging.getLogger(__name__)
 
-ROOT        = Path(__file__).resolve().parents[2]
-DATA_PATH   = ROOT / "data" / "processed" / "merged_games.csv"
+ROOT = Path(__file__).resolve().parents[2]
+DATA_PATH = ROOT / "data" / "processed" / "merged_games.csv"
 CONFIG_PATH = ROOT / "configs" / "model_params.json"
-MODELS_DIR  = ROOT / "models"
+MODELS_DIR = ROOT / "models"
 REPORTS_DIR = ROOT / "reports" / "results"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -100,9 +99,9 @@ def prepare_features(df: pd.DataFrame, features: list, config: dict, cat_encoder
 def get_test_split(config: dict):
     """Reproduce the exact same test split used in training."""
     df = pd.read_csv(DATA_PATH, low_memory=False)
-    y  = df[config["target"]].astype(str)
+    y = df[config["target"]].astype(str)
 
-    rs        = config["random_state"]
+    rs = config["random_state"]
     test_size = config["test_size"]
 
     _, df_test, _, y_test = train_test_split(
@@ -113,15 +112,17 @@ def get_test_split(config: dict):
 
 def predict(model_name: str, input_path: str = None):
     config = load_config()
-    model  = load_model(model_name)
+    model = load_model(model_name)
 
-    track    = "track_b" if "track_b" in model_name else "track_a"
+    track = "track_b" if "track_b" in model_name else "track_a"
     features = config[f"{track}_features"]
-    is_xgb   = "xgboost" in model_name
+    is_xgb = "xgboost" in model_name
 
     if input_path:
-        df     = pd.read_csv(input_path, low_memory=False)
-        y_true = df[config["target"]].astype(str) if config["target"] in df.columns else None
+        df = pd.read_csv(input_path, low_memory=False)
+        y_true = (
+            df[config["target"]].astype(str) if config["target"] in df.columns else None
+        )
         log.info(f"Predicting on custom input: {input_path} ({len(df):,} rows)")
     else:
         df, y_true = get_test_split(config)
@@ -135,7 +136,7 @@ def predict(model_name: str, input_path: str = None):
         le = LabelEncoder()
         le.fit(["Advanced", "Beginner", "Expert", "Intermediate", "Master"])
         y_pred_enc = model.predict(X)
-        y_pred     = le.inverse_transform(y_pred_enc)
+        y_pred = le.inverse_transform(y_pred_enc)
     else:
         y_pred = model.predict(X)
 
@@ -143,7 +144,7 @@ def predict(model_name: str, input_path: str = None):
     out_df["predicted_skill"] = y_pred
     if y_true is not None:
         out_df["actual_skill"] = y_true.values
-        out_df["correct"]      = (out_df["predicted_skill"] == out_df["actual_skill"])
+        out_df["correct"] = out_df["predicted_skill"] == out_df["actual_skill"]
 
     out_path = REPORTS_DIR / f"predictions_{model_name}.csv"
     out_df.to_csv(out_path, index=False)
@@ -156,21 +157,19 @@ def predict(model_name: str, input_path: str = None):
 
         print("\n── Per-Class Report ──────────────────────────────────────")
         # labels= ensures correct ordering without remapping names
-        print(classification_report(
-            y_true, y_pred,
-            labels=CLASS_ORDER,
-            zero_division=0
-        ))
+        print(
+            classification_report(y_true, y_pred, labels=CLASS_ORDER, zero_division=0)
+        )
 
         print("── Confusion Matrix ──────────────────────────────────────")
-        cm    = confusion_matrix(y_true, y_pred, labels=CLASS_ORDER)
+        cm = confusion_matrix(y_true, y_pred, labels=CLASS_ORDER)
         cm_df = pd.DataFrame(cm, index=CLASS_ORDER, columns=CLASS_ORDER)
         cm_df.index.name = "Actual \\ Predicted"
         print(cm_df.to_string())
 
         print("\n── Summary ───────────────────────────────────────────────")
         correct = (np.array(y_pred) == np.array(y_true)).sum()
-        total   = len(y_true)
+        total = len(y_true)
         print(f"  Overall accuracy : {correct/total:.2%} ({correct}/{total})")
         print(f"  Predictions CSV  : {out_path}")
 
@@ -178,14 +177,18 @@ def predict(model_name: str, input_path: str = None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run predictions with a trained chess skill model")
-    parser.add_argument(
-        "--model", default="random_forest_track_b",
-        help="Model name to load from models/ dir (default: random_forest_track_b)"
+    parser = argparse.ArgumentParser(
+        description="Run predictions with a trained chess skill model"
     )
     parser.add_argument(
-        "--input", default=None,
-        help="Path to a custom CSV file. If omitted, uses the held-out test set."
+        "--model",
+        default="random_forest_track_b",
+        help="Model name to load from models/ dir (default: random_forest_track_b)",
+    )
+    parser.add_argument(
+        "--input",
+        default=None,
+        help="Path to a custom CSV file. If omitted, uses the held-out test set.",
     )
     args = parser.parse_args()
     predict(model_name=args.model, input_path=args.input)
