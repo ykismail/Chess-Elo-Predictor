@@ -1,12 +1,11 @@
 # Data — never commit raw data
-data/raw/
 data/processed/
 data/interim/
 data/intermediate
 data/external/
 
 # CSV files (large datasets)
-*.csv
+
 !README.csv
 
 # Python
