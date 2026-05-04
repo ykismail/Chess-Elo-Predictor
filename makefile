@@ -13,12 +13,12 @@ CONFIG ?= configs/config.toml
 help:
 	@echo Chess Elo Predictor - Multi-Phase Pipeline
 	@echo ================================================================================
-	@echo Setup ^& Install:
+	@echo Setup & Install:
 	@echo   make setup           - Install Poetry dependencies
 	@echo Pipeline Phases:
-	@echo   make phase1          - Phase 1: Data Loading ^& Parsing
-	@echo   make phase3          - Phase 3: Transformation ^& Merge
-	@echo   make phase4          - Phase 4: Feature Engineering ^& Integration
+	@echo   make phase1          - Phase 1: Data Loading & Parsing
+	@echo   make phase3          - Phase 3: Transformation & Merge
+	@echo   make phase4          - Phase 4: Feature Engineering & Integration
 	@echo   make pipeline        - Run entire pipeline with validations
 	@echo Validation:
 	@echo   make validate-phase1 - Validate Phase 1 outputs
@@ -46,7 +46,7 @@ setup:
 # PHASE 1: Data Loading & Parsing
 # ────────────────────────────────────────────────────────────────────────────
 phase1:
-	@echo [PHASE 1] Data Loading ^& Parsing
+	@echo [PHASE 1] Data Loading & Parsing
 	@echo ================================================================================
 	@echo - Downloading raw data sources (Kaggle, GitHub, Lichess)
 	@echo - Parsing PGN/UCI files into structured DataFrames
@@ -82,7 +82,7 @@ validate-phase4:
 # PHASE 3: Transformation ^& Merge
 # ────────────────────────────────────────────────────────────────────────────
 phase3: phase1
-	@echo [PHASE 3] Transformation ^& Merge
+	@echo [PHASE 3] Transformation & Merge
 	@echo ================================================================================
 	@echo - ECO opening matching (PGN to opening codes)
 	@echo - Stockfish feature extraction (engine evaluations)
@@ -98,7 +98,7 @@ phase4: phase3
 	@echo [PHASE 4] Feature Engineering ^& Integration
 	@echo ================================================================================
 	@echo - Feature engineering: Elo buckets, acl_gap, winner targets
-	@echo - Lichess integration: Harmonise ^& merge Lichess data (load_lichess)
+	@echo - Lichess integration: Harmonise & merge Lichess data (load_lichess)
 	@echo - Final outputs: games.csv (~23k Kaggle), merged_games.csv (~43k combined)
 	python -m poetry run python src/data/build_features.py
 	@echo [OK] Phase 4 complete.
@@ -113,7 +113,7 @@ pipeline: clean phase1 validate-phase1 phase3 validate-phase3 phase4 validate-ph
 	@echo   Outputs:
 	@echo   - games.csv              (~23k Kaggle games with Stockfish)
 	@echo   - merged_games.csv       (~43k combined games)
-	@echo   Ready for modeling ^& analysis!
+	@echo   Ready for modeling & analysis!
 	@echo ================================================================================
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -148,13 +148,13 @@ lint-all: lint format isort
 # Cleanup
 # ────────────────────────────────────────────────────────────────────────────
 # ────────────────────────────────────────────────────────────────────────────
-# Cleanup (Windows-compatible)
+# Cleanup (Cross-platform)
 # ────────────────────────────────────────────────────────────────────────────
 clean:
 	@echo "Cleaning generated files..."
-	-for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
-	-del /s *.pyc
-	-del /s .DS_Store
+	python -c "import shutil, os; [shutil.rmtree(d) for d in __import__('pathlib').Path('.').rglob('__pycache__')]"
+	python -c "from pathlib import Path; [f.unlink() for f in Path('.').rglob('*.pyc')]"
+	python -c "from pathlib import Path; [f.unlink() for f in Path('.').rglob('.DS_Store')]"
 	@echo "✓ Cleanup complete."
 
 # ────────────────────────────────────────────────────────────────────────────
