@@ -13,26 +13,26 @@ CONFIG ?= configs/config.toml
 help:
 	@echo Chess Elo Predictor - Multi-Phase Pipeline
 	@echo ================================================================================
-	@echo Setup & Install:
-	@echo   make setup           - Install Poetry dependencies
-	@echo Pipeline Phases:
-	@echo   make phase1          - Phase 1: Data Loading & Parsing
-	@echo   make phase3          - Phase 3: Transformation & Merge
-	@echo   make phase4          - Phase 4: Feature Engineering & Integration
-	@echo   make pipeline        - Run entire pipeline with validations
-	@echo Validation:
-	@echo   make validate-phase1 - Validate Phase 1 outputs
-	@echo   make validate-phase3 - Validate Phase 3 outputs
-	@echo   make validate-phase4 - Validate Phase 4 outputs
-	@echo   make validate        - Run all validations
-	@echo Code Quality:
-	@echo   make test            - Run pytest
-	@echo   make lint            - Run flake8
-	@echo   make format          - Format with black
-	@echo   make isort           - Sort imports with isort
-	@echo   make lint-all        - Run all lint checks
-	@echo Utilities:
-	@echo   make clean           - Remove generated files
+	@echo "Setup & Install:"
+	@echo "  make setup           - Install Poetry dependencies"
+	@echo "Pipeline Phases:"
+	@echo "  make phase1          - Phase 1: Data Loading & Parsing"
+	@echo "  make phase3          - Phase 3: Transformation & Merge"
+	@echo "  make phase4          - Phase 4: Feature Engineering & Integration"
+	@echo "  make pipeline        - Run entire pipeline with validations"
+	@echo "Validation:"
+	@echo "  make validate-phase1 - Validate Phase 1 outputs"
+	@echo "  make validate-phase3 - Validate Phase 3 outputs"
+	@echo "  make validate-phase4 - Validate Phase 4 outputs"
+	@echo "  make validate        - Run all validations"
+	@echo "Code Quality:"
+	@echo "  make test            - Run pytest"
+	@echo "  make lint            - Run flake8"
+	@echo "  make format          - Format with black"
+	@echo "  make isort           - Sort imports with isort"
+	@echo "  make lint-all        - Run all lint checks"
+	@echo "Utilities:"
+	@echo "  make clean           - Remove generated files"
 
 # ────────────────────────────────────────────────────────────────────────────
 # Setup
@@ -46,7 +46,7 @@ setup:
 # PHASE 1: Data Loading & Parsing
 # ────────────────────────────────────────────────────────────────────────────
 phase1:
-	@echo [PHASE 1] Data Loading & Parsing
+	@echo "[PHASE 1] Data Loading & Parsing"
 	@echo ================================================================================
 	@echo - Downloading raw data sources (Kaggle, GitHub, Lichess)
 	@echo - Parsing PGN/UCI files into structured DataFrames
@@ -79,10 +79,10 @@ validate-phase4:
 	@echo [OK] Phase 4 validation complete.
 
 # ────────────────────────────────────────────────────────────────────────────
-# PHASE 3: Transformation ^& Merge
+# PHASE 3: Transformation & Merge
 # ────────────────────────────────────────────────────────────────────────────
 phase3: phase1
-	@echo [PHASE 3] Transformation & Merge
+	@echo "[PHASE 3] Transformation & Merge"
 	@echo ================================================================================
 	@echo - ECO opening matching (PGN to opening codes)
 	@echo - Stockfish feature extraction (engine evaluations)
@@ -92,10 +92,10 @@ phase3: phase1
 	@echo [OK] Phase 3 complete.
 
 # ────────────────────────────────────────────────────────────────────────────
-# PHASE 4: Feature Engineering ^& Integration
+# PHASE 4: Feature Engineering & Integration
 # ────────────────────────────────────────────────────────────────────────────
 phase4: phase3
-	@echo [PHASE 4] Feature Engineering ^& Integration
+	@echo "[PHASE 4] Feature Engineering & Integration"
 	@echo ================================================================================
 	@echo - Feature engineering: Elo buckets, acl_gap, winner targets
 	@echo - Lichess integration: Harmonise & merge Lichess data (load_lichess)
@@ -108,12 +108,12 @@ phase4: phase3
 # ────────────────────────────────────────────────────────────────────────────
 pipeline: clean phase1 validate-phase1 phase3 validate-phase3 phase4 validate-phase4
 	@echo ================================================================================
-	@echo   ✓ PIPELINE COMPLETE
+	@echo   PIPELINE COMPLETE
 	@echo ================================================================================
 	@echo   Outputs:
 	@echo   - games.csv              (~23k Kaggle games with Stockfish)
 	@echo   - merged_games.csv       (~43k combined games)
-	@echo   Ready for modeling & analysis!
+	@echo "  Ready for modeling & analysis!"
 	@echo ================================================================================
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -126,8 +126,7 @@ validate: validate-phase1 validate-phase3 validate-phase4
 # Code Quality Checks
 # ────────────────────────────────────────────────────────────────────────────
 test:
-	@echo "Running tests with pytest..."
-	-python -m poetry run pytest tests/
+	-python -m poetry run pytest tests/ --tb=short -v --maxfail=999 || true
 
 lint:
 	@echo "Running flake8 linter..."
@@ -142,7 +141,7 @@ isort:
 	-python -m poetry run isort src/ scripts/ stockfish_preprocessing/
 
 lint-all: lint format isort
-	@echo "✓ All code quality checks complete."
+	@echo "Code quality checks complete."
 
 # ────────────────────────────────────────────────────────────────────────────
 # Cleanup
