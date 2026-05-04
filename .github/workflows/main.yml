@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       matrix:
         python-version: ["3.14.4"]
@@ -23,7 +23,7 @@ jobs:
 
     - name: Install Poetry
       run: |
-        curl -sSL https://install.python-poetry.org | python3 -
+        (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
 
     - name: Cache Poetry dependencies
       uses: actions/cache@v3
@@ -60,7 +60,7 @@ jobs:
   cd:
     needs: ci
     if: github.ref == 'refs/heads/Abdelrahman' && github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       pages: write
       id-token: write
@@ -77,7 +77,7 @@ jobs:
 
       - name: Install Poetry
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
+          (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
       
       - name: Install dependencies
         run: poetry install
