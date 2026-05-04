@@ -64,10 +64,12 @@ import chess.pgn
 import pandas as pd
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-STOCKFISH_PATH   = "stockfish_preprocessing/stockfish"        # update if binary has a different name/path
-DEFAULT_DEPTH    = 10                 # analysis depth per position
-CHECKPOINT_EVERY = 500                # save progress every N games
-CAP_CENTIPAWNS   = 2000               # cap evaluations at ±2000 to avoid mate scores
+STOCKFISH_PATH = (
+    "stockfish_preprocessing/stockfish"  # update if binary has a different name/path
+)
+DEFAULT_DEPTH = 10  # analysis depth per position
+CHECKPOINT_EVERY = 500  # save progress every N games
+CAP_CENTIPAWNS = 2000  # cap evaluations at ±2000 to avoid mate scores
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -99,24 +101,23 @@ def evaluate_game(
     try:
         # Build a PGN string python-chess can parse
         # Lichess moves column is already SAN without move numbers
-        tokens    = moves_san.strip().split()
+        tokens = moves_san.strip().split()
         pgn_moves = " ".join(
-            f"{i // 2 + 1}. {m}" if i % 2 == 0 else m
-            for i, m in enumerate(tokens)
+            f"{i // 2 + 1}. {m}" if i % 2 == 0 else m for i, m in enumerate(tokens)
         )
-        pgn_str = f"[Event \"{game_id}\"]\n\n{pgn_moves}\n"
+        pgn_str = f'[Event "{game_id}"]\n\n{pgn_moves}\n'
 
         game = chess.pgn.read_game(io.StringIO(pgn_str))
         if game is None:
             return None
 
-        board  = game.board()
+        board = game.board()
         scores = []
 
         with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
             for move in game.mainline_moves():
                 board.push(move)
-                info  = engine.analyse(board, chess.engine.Limit(depth=depth))
+                info = engine.analyse(board, chess.engine.Limit(depth=depth))
                 score = info["score"].white()
 
                 if score.is_mate():
@@ -131,7 +132,7 @@ def evaluate_game(
             return None
 
         return {
-            "Event":      game_id,
+            "Event": game_id,
             "MoveScores": " ".join(map(str, scores)),
         }
 
@@ -161,12 +162,12 @@ def load_already_processed(output_path: str) -> set:
 
 
 def run(
-    input_path:  str  = "../data/chess_games.csv",
-    output_path: str  = "../data/lichess_stockfish.csv",
+    input_path: str = "../data/chess_games.csv",
+    output_path: str = "../data/lichess_stockfish.csv",
     stockfish_path: str = STOCKFISH_PATH,
-    depth:       int  = DEFAULT_DEPTH,
-    workers:     int  = 1,
-    resume:      bool = False,
+    depth: int = DEFAULT_DEPTH,
+    workers: int = 1,
+    resume: bool = False,
 ):
     """
     Main entry point — processes all games in chess_games.csv.
@@ -189,7 +190,9 @@ def run(
         print(f"\nERROR: Could not start Stockfish at '{stockfish_path}'")
         print(f"  {e}")
         print("\nFix: Download Stockfish from https://stockfishchess.org/download/")
-        print("     Place the binary in this folder, or update STOCKFISH_PATH in the script.")
+        print(
+            "     Place the binary in this folder, or update STOCKFISH_PATH in the script."
+        )
         sys.exit(1)
 
     # ── Load input data ────────────────────────────────────────────────────────
@@ -210,18 +213,20 @@ def run(
         return
 
     # ── Estimate time ─────────────────────────────────────────────────────────
-    avg_halfmoves  = df["turns"].mean()
-    ms_per_pos     = {8: 2, 10: 5, 12: 10}.get(depth, 5)
-    est_minutes    = (avg_halfmoves * len(todo) * ms_per_pos) / 1000 / 60
-    print(f"Estimated time  : ~{est_minutes:.0f} minutes at depth {depth}"
-          f" ({workers} worker{'s' if workers > 1 else ''})")
+    avg_halfmoves = df["turns"].mean()
+    ms_per_pos = {8: 2, 10: 5, 12: 10}.get(depth, 5)
+    est_minutes = (avg_halfmoves * len(todo) * ms_per_pos) / 1000 / 60
+    print(
+        f"Estimated time  : ~{est_minutes:.0f} minutes at depth {depth}"
+        f" ({workers} worker{'s' if workers > 1 else ''})"
+    )
     print(f"Output          : '{output_path}'")
     print(f"Checkpoint every: {CHECKPOINT_EVERY} games\n")
 
     # ── Open output file ──────────────────────────────────────────────────────
     write_header = not os.path.exists(output_path) or not resume
     out_file = open(output_path, "a" if resume else "w", newline="")
-    writer   = csv.DictWriter(out_file, fieldnames=["Event", "MoveScores"])
+    writer = csv.DictWriter(out_file, fieldnames=["Event", "MoveScores"])
     if write_header:
         writer.writeheader()
 
@@ -232,13 +237,13 @@ def run(
     ]
 
     processed = 0
-    failed    = 0
-    t_start   = time.time()
+    failed = 0
+    t_start = time.time()
 
     if workers > 1:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = {executor.submit(_worker, t): t[0] for t in tasks}
-            buffer  = []
+            buffer = []
 
             for future in as_completed(futures):
                 result = future.result()
@@ -256,15 +261,16 @@ def run(
                     buffer = []
 
                 # Progress
-                elapsed  = time.time() - t_start
-                rate     = processed / elapsed if elapsed > 0 else 1
+                elapsed = time.time() - t_start
+                rate = processed / elapsed if elapsed > 0 else 1
                 eta_secs = (len(tasks) - processed) / rate
                 print(
                     f"\r  {processed:>6,}/{len(tasks):,} games"
                     f"  |  failed: {failed}"
                     f"  |  {rate:.1f} games/s"
                     f"  |  ETA: {eta_secs/60:.1f} min   ",
-                    end="", flush=True
+                    end="",
+                    flush=True,
                 )
 
             if buffer:
@@ -287,15 +293,16 @@ def run(
                 out_file.flush()
                 buffer = []
 
-            elapsed  = time.time() - t_start
-            rate     = processed / elapsed if elapsed > 0 else 1
+            elapsed = time.time() - t_start
+            rate = processed / elapsed if elapsed > 0 else 1
             eta_secs = (len(tasks) - processed) / rate
             print(
                 f"\r  {processed:>6,}/{len(tasks):,} games"
                 f"  |  failed: {failed}"
                 f"  |  {rate:.1f} games/s"
                 f"  |  ETA: {eta_secs/60:.1f} min   ",
-                end="", flush=True
+                end="",
+                flush=True,
             )
 
         if buffer:
@@ -319,28 +326,36 @@ if __name__ == "__main__":
         description="Compute Stockfish evaluations for Lichess chess_games.csv"
     )
     parser.add_argument(
-        "--input",   default="chess_games.csv",
-        help="Path to chess_games.csv (default: chess_games.csv)"
+        "--input",
+        default="chess_games.csv",
+        help="Path to chess_games.csv (default: chess_games.csv)",
     )
     parser.add_argument(
-        "--output",  default="lichess_stockfish.csv",
-        help="Output CSV path (default: lichess_stockfish.csv)"
+        "--output",
+        default="lichess_stockfish.csv",
+        help="Output CSV path (default: lichess_stockfish.csv)",
     )
     parser.add_argument(
-        "--stockfish", default=STOCKFISH_PATH,
-        help=f"Path to Stockfish binary (default: {STOCKFISH_PATH})"
+        "--stockfish",
+        default=STOCKFISH_PATH,
+        help=f"Path to Stockfish binary (default: {STOCKFISH_PATH})",
     )
     parser.add_argument(
-        "--depth",   type=int, default=DEFAULT_DEPTH,
-        help=f"Analysis depth per position (default: {DEFAULT_DEPTH})"
+        "--depth",
+        type=int,
+        default=DEFAULT_DEPTH,
+        help=f"Analysis depth per position (default: {DEFAULT_DEPTH})",
     )
     parser.add_argument(
-        "--workers", type=int, default=1,
-        help="Number of parallel processes (default: 1)"
+        "--workers",
+        type=int,
+        default=1,
+        help="Number of parallel processes (default: 1)",
     )
     parser.add_argument(
-        "--resume",  action="store_true",
-        help="Resume an interrupted run (skip already-processed games)"
+        "--resume",
+        action="store_true",
+        help="Resume an interrupted run (skip already-processed games)",
     )
 
     args = parser.parse_args()

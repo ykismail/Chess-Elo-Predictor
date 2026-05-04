@@ -16,7 +16,7 @@ import os
 import sys
 
 # ── Path bootstrap ────────────────────────────────────────────────────────────
-script_dir  = os.path.dirname(os.path.abspath(__file__))
+script_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
 if project_dir not in sys.path:
     sys.path.insert(0, project_dir)
@@ -32,6 +32,7 @@ intermediate_dir = os.path.join(project_dir, "data", "intermediate")
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _header(title: str) -> None:
     print(f"\n{'=' * 60}")
     print(f"  VALIDATING: {title}")
@@ -41,6 +42,7 @@ def _header(title: str) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase-specific validation entry points
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def validate_sources() -> None:
     """

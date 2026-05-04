@@ -5,6 +5,7 @@ import re
 import chess.pgn
 import numpy as np
 
+
 def download_eco_database(save_path: str = "eco_openings.csv") -> pd.DataFrame:
     """
     Download the Lichess ECO opening database from GitHub and save locally.
@@ -13,7 +14,9 @@ def download_eco_database(save_path: str = "eco_openings.csv") -> pd.DataFrame:
     Source: https://github.com/lichess-org/chess-openings (public domain)
     Citation: lichess-org/chess-openings, github.com/lichess-org/chess-openings
     """
-    url_template = "https://raw.githubusercontent.com/lichess-org/chess-openings/master/{}.tsv"
+    url_template = (
+        "https://raw.githubusercontent.com/lichess-org/chess-openings/master/{}.tsv"
+    )
     frames = []
 
     for letter in list("abcde"):
@@ -26,7 +29,9 @@ def download_eco_database(save_path: str = "eco_openings.csv") -> pd.DataFrame:
             raw = resp.text
             print(f"  {letter}.tsv — HTTP {resp.status_code}, {len(raw)} chars")
             print(f"  First line: {repr(raw.splitlines()[0])}")
-            print(f"  Second line: {repr(raw.splitlines()[1]) if len(raw.splitlines()) > 1 else 'N/A'}")
+            print(
+                f"  Second line: {repr(raw.splitlines()[1]) if len(raw.splitlines()) > 1 else 'N/A'}"
+            )
 
             # ── Auto-detect columns from header row ──────────────────────────
             df_letter = pd.read_csv(io.StringIO(raw), sep="\t")
@@ -56,11 +61,16 @@ def download_eco_database(save_path: str = "eco_openings.csv") -> pd.DataFrame:
     col_map = {}
     for col in df_eco.columns:
         col_lower = col.lower().strip()
-        if col_lower == "eco":        col_map[col] = "eco"
-        elif col_lower == "name":     col_map[col] = "name"
-        elif col_lower in ("pgn", "moves", "san"): col_map[col] = "pgn"
-        elif col_lower == "uci":      col_map[col] = "uci"
-        elif col_lower == "epd":      col_map[col] = "epd"
+        if col_lower == "eco":
+            col_map[col] = "eco"
+        elif col_lower == "name":
+            col_map[col] = "name"
+        elif col_lower in ("pgn", "moves", "san"):
+            col_map[col] = "pgn"
+        elif col_lower == "uci":
+            col_map[col] = "uci"
+        elif col_lower == "epd":
+            col_map[col] = "epd"
     df_eco = df_eco.rename(columns=col_map)
 
     if "pgn" not in df_eco.columns:
@@ -77,17 +87,28 @@ def download_eco_database(save_path: str = "eco_openings.csv") -> pd.DataFrame:
         return " ".join(cleaned.split()).strip()
 
     df_eco["moves_normalised"] = df_eco["pgn"].apply(normalise_moves)
+
+    # Ensure the directory exists before saving
+    import os
+
+    save_dir = os.path.dirname(save_path)
+    if save_dir and not os.path.exists(save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+
     df_eco.to_csv(save_path, index=False)
 
     print(f"Total ECO entries : {len(df_eco):,}")
-    print(f"ECO family counts :\n{df_eco['eco_family'].value_counts().sort_index().to_string()}")
+    print(
+        f"ECO family counts :\n{df_eco['eco_family'].value_counts().sort_index().to_string()}"
+    )
     print(f"Saved to '{save_path}'")
     return df_eco
+
 
 def parse_pgn(filepath: str) -> pd.DataFrame:
     """
     Parse a PGN file using python-chess and return a DataFrame with one row per game.
-    
+
     Extracted columns:
         event_id         : int   — game identifier
         white_elo        : int   — White player Elo
@@ -119,15 +140,15 @@ def parse_pgn(filepath: str) -> pd.DataFrame:
             except ValueError:
                 continue
 
-            result    = headers.get("Result", "*")
-            event_id  = int(headers.get("Event", 0))
+            result = headers.get("Result", "*")
+            event_id = int(headers.get("Event", 0))
 
             # ── Walk through moves to extract board-level features ────────────
             board = game.board()
-            moves_san       = []
-            num_captures    = 0
-            white_castled   = False
-            black_castled   = False
+            moves_san = []
+            num_captures = 0
+            white_castled = False
+            black_castled = False
             white_castle_side = "none"
             black_castle_side = "none"
 
@@ -144,15 +165,15 @@ def parse_pgn(filepath: str) -> pd.DataFrame:
                     is_kingside = board.is_kingside_castling(move)
                     side = "kingside" if is_kingside else "queenside"
                     if board.turn == chess.WHITE:
-                        white_castled     = True
+                        white_castled = True
                         white_castle_side = side
                     else:
-                        black_castled     = True
+                        black_castled = True
                         black_castle_side = side
 
                 board.push(move)
 
-            num_moves  = len(moves_san) // 2  # full moves
+            num_moves = len(moves_san) // 2  # full moves
             moves_text = " ".join(moves_san)
 
             # ── Infer termination ─────────────────────────────────────────────
@@ -165,36 +186,41 @@ def parse_pgn(filepath: str) -> pd.DataFrame:
             else:
                 termination = "unknown"
 
-            records.append({
-                "event_id":          event_id,
-                "white_elo":         white_elo,
-                "black_elo":         black_elo,
-                "result":            result,
-                "num_moves":         num_moves,
-                "white_castled":     white_castled,
-                "black_castled":     black_castled,
-                "white_castle_side": white_castle_side,
-                "black_castle_side": black_castle_side,
-                "num_captures":      num_captures,
-                "termination":       termination,
-                "moves_san":         moves_text,
-            })
+            records.append(
+                {
+                    "event_id": event_id,
+                    "white_elo": white_elo,
+                    "black_elo": black_elo,
+                    "result": result,
+                    "num_moves": num_moves,
+                    "white_castled": white_castled,
+                    "black_castled": black_castled,
+                    "white_castle_side": white_castle_side,
+                    "black_castle_side": black_castle_side,
+                    "num_captures": num_captures,
+                    "termination": termination,
+                    "moves_san": moves_text,
+                }
+            )
 
     df = pd.DataFrame(records)
     print(f"Parsed {len(df):,} games from {filepath}")
     print(f"\nResult distribution:\n{df['result'].value_counts().to_string()}")
-    print(f"\nTermination distribution:\n{df['termination'].value_counts().to_string()}")
+    print(
+        f"\nTermination distribution:\n{df['termination'].value_counts().to_string()}"
+    )
     return df
+
 
 def build_eco_lookup(df_eco: pd.DataFrame) -> dict:
     """
     Build a prefix lookup dictionary from the ECO database.
     Maps normalised move prefix → (eco_code, opening_name, eco_family).
-    
+
     Parameters
     ----------
     df_eco : DataFrame from download_eco_database()
-    
+
     Returns
     -------
     dict keyed by normalised move string
@@ -210,15 +236,15 @@ def build_eco_lookup(df_eco: pd.DataFrame) -> dict:
 def match_eco(moves_san: str, lookup: dict, max_depth: int = 10) -> tuple:
     """
     Match a game's moves against the ECO lookup using longest-prefix matching.
-    
+
     Tries progressively shorter prefixes until a match is found.
-    
+
     Parameters
     ----------
     moves_san : str   — full SAN move sequence from parse_pgn()
     lookup    : dict  — from build_eco_lookup()
     max_depth : int   — maximum number of half-moves to try
-    
+
     Returns
     -------
     (eco_code, opening_name, eco_family) or ('Unknown', 'Unknown', 'Unknown')
@@ -237,6 +263,7 @@ def match_eco(moves_san: str, lookup: dict, max_depth: int = 10) -> tuple:
             return lookup[prefix]
 
     return ("Unknown", "Unknown", "Unknown")
+
 
 def parse_uci(filepath: str) -> pd.DataFrame:
     """
@@ -259,31 +286,33 @@ def parse_uci(filepath: str) -> pd.DataFrame:
             continue
 
         move_lines = [
-            line for line in block.split("\n")
+            line
+            for line in block.split("\n")
             if line.strip() and not line.startswith("[")
         ]
-        moves_raw  = " ".join(move_lines)
-        moves_clean = re.sub(
-            r"\s*(1-0|0-1|1/2-1/2|\*)\s*$", "", moves_raw
-        ).strip()
+        moves_raw = " ".join(move_lines)
+        moves_clean = re.sub(r"\s*(1-0|0-1|1/2-1/2|\*)\s*$", "", moves_raw).strip()
 
-        records.append({
-            "event_id":  int(event_match.group(1)),
-            "moves_uci": moves_clean,
-        })
+        records.append(
+            {
+                "event_id": int(event_match.group(1)),
+                "moves_uci": moves_clean,
+            }
+        )
 
     df = pd.DataFrame(records)
     print(f"Parsed {len(df):,} games from {filepath}")
     return df
 
+
 def extract_stockfish_features(filepath: str) -> pd.DataFrame:
     """
     Parse stockfish.csv and compute per-game evaluation features.
-    
+
     Parameters
     ----------
     filepath : str — path to stockfish.csv
-    
+
     Returns
     -------
     pd.DataFrame with one row per game and derived evaluation features
@@ -303,8 +332,8 @@ def extract_stockfish_features(filepath: str) -> pd.DataFrame:
         # ── Split scores by player ───────────────────────────────────────────
         # After White's move: even indices (0, 2, 4, ...)
         # After Black's move: odd indices  (1, 3, 5, ...)
-        white_scores = scores[0::2]   # evaluation after White moves
-        black_scores = scores[1::2]   # evaluation after Black moves
+        white_scores = scores[0::2]  # evaluation after White moves
+        black_scores = scores[1::2]  # evaluation after Black moves
 
         # ── Helper: average centipawn loss ───────────────────────────────────
         def avg_centipawn_loss(scores_list, is_white: bool) -> float:
@@ -327,41 +356,47 @@ def extract_stockfish_features(filepath: str) -> pd.DataFrame:
                     count += 1
             return count
 
-        records.append({
-            "event_id":            row["Event"],
-            "total_half_moves":    len(scores),
-            "white_acl":           avg_centipawn_loss(white_scores, is_white=True),
-            "black_acl":           avg_centipawn_loss(black_scores, is_white=False),
-            "white_blunders":      count_errors(white_scores, True,  threshold=100),
-            "black_blunders":      count_errors(black_scores, False, threshold=100),
-            "white_mistakes":      count_errors(white_scores, True,  threshold=50) -
-                                   count_errors(white_scores, True,  threshold=100),
-            "black_mistakes":      count_errors(black_scores, False, threshold=50) -
-                                   count_errors(black_scores, False, threshold=100),
-            "final_eval":          scores[-1],
-            "max_white_advantage": max(scores),
-            "max_black_advantage": min(scores),
-            "game_sharpness":      round(float(np.std(scores)), 2),
-        })
+        records.append(
+            {
+                "event_id": row["Event"],
+                "total_half_moves": len(scores),
+                "white_acl": avg_centipawn_loss(white_scores, is_white=True),
+                "black_acl": avg_centipawn_loss(black_scores, is_white=False),
+                "white_blunders": count_errors(white_scores, True, threshold=100),
+                "black_blunders": count_errors(black_scores, False, threshold=100),
+                "white_mistakes": count_errors(white_scores, True, threshold=50)
+                - count_errors(white_scores, True, threshold=100),
+                "black_mistakes": count_errors(black_scores, False, threshold=50)
+                - count_errors(black_scores, False, threshold=100),
+                "final_eval": scores[-1],
+                "max_white_advantage": max(scores),
+                "max_black_advantage": min(scores),
+                "game_sharpness": round(float(np.std(scores)), 2),
+            }
+        )
 
     df = pd.DataFrame(records)
     print(f"Extracted Stockfish features for {len(df):,} games")
-    print(df[["white_acl", "black_acl", "white_blunders", "black_blunders"]].describe().round(2).to_string())
+    print(
+        df[["white_acl", "black_acl", "white_blunders", "black_blunders"]]
+        .describe()
+        .round(2)
+        .to_string()
+    )
     return df
 
+
 def merge_datasets(
-    df_pgn: pd.DataFrame,
-    df_uci: pd.DataFrame,
-    df_sf: pd.DataFrame
+    df_pgn: pd.DataFrame, df_uci: pd.DataFrame, df_sf: pd.DataFrame
 ) -> pd.DataFrame:
     """
     Merge the three parsed DataFrames on event_id using inner joins.
-    
+
     Sources:
         df_pgn : game metadata + ECO opening info  (from data.pgn + lichess ECO)
         df_uci : UCI move sequences                 (from data_uci.pgn)
         df_sf  : Stockfish evaluation features      (from stockfish.csv)
-    
+
     Returns
     -------
     Merged DataFrame with all features from all three sources
@@ -369,15 +404,14 @@ def merge_datasets(
     # Keep only moves_uci from UCI file (metadata already in df_pgn)
     df_uci_slim = df_uci[["event_id", "moves_uci"]]
 
-    df = (
-        df_pgn
-        .merge(df_uci_slim, on="event_id", how="inner")
-        .merge(df_sf,       on="event_id", how="inner")
+    df = df_pgn.merge(df_uci_slim, on="event_id", how="inner").merge(
+        df_sf, on="event_id", how="inner"
     )
 
     print(f"Merged DataFrame shape: {df.shape}")
     print(f"Columns: {list(df.columns)}")
     return df
+
 
 def load_lichess(filepath: str, stockfish_path: str) -> pd.DataFrame:
     """
@@ -414,57 +448,73 @@ def load_lichess(filepath: str, stockfish_path: str) -> pd.DataFrame:
     out = pd.DataFrame()
 
     # ── IDs & source ─────────────────────────────────────────────────────────
-    out["event_id"]   = df_l["game_id"]
-    out["source"]     = "lichess_csv"
+    out["event_id"] = df_l["game_id"]
+    out["source"] = "lichess_csv"
 
     # ── Elo ───────────────────────────────────────────────────────────────────
-    out["white_elo"]  = df_l["white_rating"]
-    out["black_elo"]  = df_l["black_rating"]
+    out["white_elo"] = df_l["white_rating"]
+    out["black_elo"] = df_l["black_rating"]
 
     # ── Game length ───────────────────────────────────────────────────────────
-    out["num_moves"]        = df_l["turns"] // 2
+    out["num_moves"] = df_l["turns"] // 2
     out["total_half_moves"] = df_l["turns"]
 
     # ── Termination ───────────────────────────────────────────────────────────
     termination_map = {
-        "Resign":      "resignation",
-        "Mate":        "checkmate",
+        "Resign": "resignation",
+        "Mate": "checkmate",
         "Out of Time": "timeout",
-        "Draw":        "draw",
+        "Draw": "draw",
     }
     out["termination"] = df_l["victory_status"].map(termination_map).fillna("unknown")
 
     # ── Opening info ──────────────────────────────────────────────────────────
-    out["eco_code"]     = df_l["opening_code"]
+    out["eco_code"] = df_l["opening_code"]
     out["opening_name"] = df_l["opening_fullname"]
-    out["eco_family"]   = df_l["opening_code"].str[0].str.upper()
+    out["eco_family"] = df_l["opening_code"].str[0].str.upper()
 
     # ── Move sequences ────────────────────────────────────────────────────────
     out["moves_san"] = df_l["moves"]
     out["moves_uci"] = np.nan
 
     # ── Elo classification target ────────────────────────────────────────────
-    elo_bins   = [0, 1000, 1500, 2000, 2500, 9999]
+    elo_bins = [0, 1000, 1500, 2000, 2500, 9999]
     elo_labels = ["Beginner", "Intermediate", "Advanced", "Expert", "Master"]
-    out["elo_bucket_white"] = pd.cut(df_l["white_rating"], bins=elo_bins, labels=elo_labels, right=False)
-    out["elo_bucket_black"] = pd.cut(df_l["black_rating"], bins=elo_bins, labels=elo_labels, right=False)
+    out["elo_bucket_white"] = pd.cut(
+        df_l["white_rating"], bins=elo_bins, labels=elo_labels, right=False
+    )
+    out["elo_bucket_black"] = pd.cut(
+        df_l["black_rating"], bins=elo_bins, labels=elo_labels, right=False
+    )
 
     # ── Ordinal encoding of target ────────────────────────────────────────────
     # Beginner=0, Intermediate=1, Advanced=2, Expert=3, Master=4
-    ordinal_map = {"Beginner": 0, "Intermediate": 1, "Advanced": 2,
-                   "Expert": 3, "Master": 4}
+    ordinal_map = {
+        "Beginner": 0,
+        "Intermediate": 1,
+        "Advanced": 2,
+        "Expert": 3,
+        "Master": 4,
+    }
     out["elo_bucket_white_categorical"] = out["elo_bucket_white"].map(ordinal_map)
     out["elo_bucket_black_categorical"] = out["elo_bucket_black"].map(ordinal_map)
 
     # ── Winner target ─────────────────────────────────────────────────────────
     out["winner_multiclass"] = df_l["winner"].map({"Black": 0, "Draw": 1, "White": 2})
-    out["winner_binary"]     = df_l["winner"].map({"White": 1, "Black": 0})
+    out["winner_binary"] = df_l["winner"].map({"White": 1, "Black": 0})
 
     # ── Stockfish features (now populated from lichess_stockfish.csv) ─────────
     stockfish_cols = [
-        "white_acl", "black_acl", "white_blunders", "black_blunders",
-        "white_mistakes", "black_mistakes", "final_eval",
-        "max_white_advantage", "max_black_advantage", "game_sharpness",
+        "white_acl",
+        "black_acl",
+        "white_blunders",
+        "black_blunders",
+        "white_mistakes",
+        "black_mistakes",
+        "final_eval",
+        "max_white_advantage",
+        "max_black_advantage",
+        "game_sharpness",
     ]
     for col in stockfish_cols:
         out[col] = df_l[col] if col in df_l.columns else np.nan
@@ -472,11 +522,11 @@ def load_lichess(filepath: str, stockfish_path: str) -> pd.DataFrame:
     out["acl_gap"] = (out["white_acl"] - out["black_acl"]).round(2)
 
     # ── Castling — not available in Lichess CSV ───────────────────────────────
-    out["white_castled"]     = np.nan
-    out["black_castled"]     = np.nan
+    out["white_castled"] = np.nan
+    out["black_castled"] = np.nan
     out["white_castle_side"] = np.nan
     out["black_castle_side"] = np.nan
-    out["num_captures"]      = np.nan
+    out["num_captures"] = np.nan
 
     # ── Source flag ───────────────────────────────────────────────────────────
     out["has_stockfish"] = out["white_acl"].notna()
@@ -487,7 +537,9 @@ def load_lichess(filepath: str, stockfish_path: str) -> pd.DataFrame:
     return out
 
 
-def integrate_datasets(df_pgn_pipeline: pd.DataFrame, lichess_path: str, lichess_sf_path: str) -> pd.DataFrame:
+def integrate_datasets(
+    df_pgn_pipeline: pd.DataFrame, lichess_path: str, lichess_sf_path: str
+) -> pd.DataFrame:
     """
     Concatenate the PGN pipeline output with the Lichess CSV dataset.
     Both sources now have full Stockfish evaluation features.
@@ -503,10 +555,10 @@ def integrate_datasets(df_pgn_pipeline: pd.DataFrame, lichess_path: str, lichess
     Unified DataFrame with all ~43k games and full feature coverage
     """
     df_pgn_tagged = df_pgn_pipeline.copy()
-    df_pgn_tagged["source"]        = "kaggle_pgn"
+    df_pgn_tagged["source"] = "kaggle_pgn"
     df_pgn_tagged["has_stockfish"] = True
 
-    df_lichess  = load_lichess(lichess_path, lichess_sf_path)
+    df_lichess = load_lichess(lichess_path, lichess_sf_path)
     df_combined = pd.concat([df_pgn_tagged, df_lichess], ignore_index=True, sort=False)
     df_combined["event_id"] = range(1, len(df_combined) + 1)
 
@@ -522,12 +574,13 @@ def integrate_datasets(df_pgn_pipeline: pd.DataFrame, lichess_path: str, lichess
     print(f"Missing black_acl  : {df_combined['black_acl'].isna().sum():,}")
     return df_combined
 
+
 def save_dataset(df: pd.DataFrame, output_path: str) -> None:
     """
     Save the final DataFrame to CSV, dropping raw move columns
     that are not needed for modeling (but keeping them available
     in the PGN files if needed later).
-    
+
     Parameters
     ----------
     df          : final engineered DataFrame
@@ -538,5 +591,7 @@ def save_dataset(df: pd.DataFrame, output_path: str) -> None:
     df_save = df.drop(columns=[c for c in cols_to_drop if c in df.columns])
 
     df_save.to_csv(output_path, index=False)
-    print(f"Saved {len(df_save):,} rows × {df_save.shape[1]} columns to '{output_path}'")
+    print(
+        f"Saved {len(df_save):,} rows × {df_save.shape[1]} columns to '{output_path}'"
+    )
     print(f"\nFinal columns:\n{list(df_save.columns)}")

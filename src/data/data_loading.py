@@ -17,7 +17,7 @@ import os
 import sys
 
 # ── Path bootstrap ────────────────────────────────────────────────────────────
-script_dir  = os.path.dirname(os.path.abspath(__file__))
+script_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
 if project_dir not in sys.path:
     sys.path.insert(0, project_dir)
@@ -30,9 +30,9 @@ import pandas as pd
 from load_data import parse_uci, parse_pgn
 
 # ── Directory setup ───────────────────────────────────────────────────────────
-raw_dir          = os.path.join(project_dir, "data", "raw")
+raw_dir = os.path.join(project_dir, "data", "raw")
 intermediate_dir = os.path.join(project_dir, "data", "intermediate")
-external_dir     = os.path.join(project_dir, "data", "external")
+external_dir = os.path.join(project_dir, "data", "external")
 for d in (raw_dir, intermediate_dir, external_dir):
     os.makedirs(d, exist_ok=True)
 
@@ -40,6 +40,7 @@ for d in (raw_dir, intermediate_dir, external_dir):
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Data Acquisition
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def acquire_data() -> None:
     """
@@ -74,6 +75,7 @@ def acquire_data() -> None:
     # ── Recursive unzip ───────────────────────────────────────────────────────
     def _unzip_all(directory: str) -> None:
         import traceback
+
         extracted = True
         while extracted:
             extracted = False
@@ -103,7 +105,7 @@ def acquire_data() -> None:
     print("\nDownloading Lichess ECO opening database from GitHub...")
     frames = []
     for letter in "abcde":
-        url  = f"https://raw.githubusercontent.com/lichess-org/chess-openings/master/{letter}.tsv"
+        url = f"https://raw.githubusercontent.com/lichess-org/chess-openings/master/{letter}.tsv"
         resp = requests.get(url, timeout=20)
         resp.raise_for_status()
         df_letter = pd.read_csv(io.StringIO(resp.text), sep="\t")
@@ -128,6 +130,7 @@ def acquire_data() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. Raw Parsing
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def parse_raw_files() -> tuple[pd.DataFrame, pd.DataFrame]:
     """
