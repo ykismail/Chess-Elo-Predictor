@@ -129,31 +129,34 @@ validate:
 # ────────────────────────────────────────────────────────────────────────────
 test:
 	@echo "Running tests with pytest..."
-	poetry run pytest tests/ || true
+	-poetry run pytest tests/
 
 lint:
 	@echo "Running flake8 linter..."
-	poetry run flake8 src/ scripts/ || true
+	-poetry run flake8 src/ scripts/
 
 format:
 	@echo "Formatting code with black..."
-	poetry run black src/ scripts/ || true
+	-poetry run black src/ scripts/ stockfish_preprocessing/
 
 isort:
 	@echo "Sorting imports with isort..."
-	poetry run isort src/ scripts/ || true
+	-poetry run isort src/ scripts/ stockfish_preprocessing/
 
 lint-all: lint format isort
-	@echo "✓ All lint checks complete."
+	@echo "✓ All code quality checks complete."
 
 # ────────────────────────────────────────────────────────────────────────────
 # Cleanup
 # ────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────────────────────
+# Cleanup (Windows-compatible)
+# ────────────────────────────────────────────────────────────────────────────
 clean:
 	@echo "Cleaning generated files..."
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	find . -type f -name ".DS_Store" -delete 2>/dev/null || true
+	powershell -Command "Get-ChildItem -Path . -Include __pycache__ -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
+	powershell -Command "Get-ChildItem -Path . -Include *.pyc -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue"
+	powershell -Command "Get-ChildItem -Path . -Include .DS_Store -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue"
 	@echo "✓ Cleanup complete."
 
 # ────────────────────────────────────────────────────────────────────────────
