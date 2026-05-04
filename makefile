@@ -20,10 +20,15 @@ help:
 	@echo.
 	@echo Pipeline Phases:
 	@echo   make phase1          - Phase 1: Data Loading ^& Parsing
-	@echo   make phase2          - Phase 2: Data Validation (read-only)
 	@echo   make phase3          - Phase 3: Transformation ^& Merge
 	@echo   make phase4          - Phase 4: Feature Engineering ^& Integration
-	@echo   make pipeline        - Run entire pipeline (phases 1-4)
+	@echo   make pipeline        - Run entire pipeline with validations
+	@echo.
+	@echo Validation:
+	@echo   make validate-phase1 - Validate Phase 1 outputs
+	@echo   make validate-phase3 - Validate Phase 3 outputs
+	@echo   make validate-phase4 - Validate Phase 4 outputs
+	@echo   make validate        - Run all validations
 	@echo.
 	@echo Code Quality:
 	@echo   make test            - Run pytest
@@ -34,7 +39,6 @@ help:
 	@echo.
 	@echo Utilities:
 	@echo   make clean           - Remove generated files
-	@echo   make validate        - Run validation checks
 	@echo.
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -64,15 +68,32 @@ phase1:
 # ────────────────────────────────────────────────────────────────────────────
 # PHASE 2: Data Validation (read-only)
 # ────────────────────────────────────────────────────────────────────────────
-phase2: phase1
+validate-phase1:
 	@echo.
-	@echo [PHASE 2] Data Validation
+	@echo [PHASE 2] Validation - Phase 1 Outputs
 	@echo ================================================================================
-	@echo - Running quality checks on Phase 1 outputs (read-only)
-	@echo - Validates: parsed_data_uci, parsed_data_pgn, kaggle_merged, merged_games
+	@echo - Validates: parsed_data_uci.csv, parsed_data_pgn.csv
 	@echo.
-	poetry run python src/data/validate.py --phase all
-	@echo [OK] Phase 2 complete.
+	poetry run python src/data/validate.py --phase sources
+	@echo [OK] Phase 1 validation complete.
+
+validate-phase3:
+	@echo.
+	@echo [PHASE 2] Validation - Phase 3 Outputs
+	@echo ================================================================================
+	@echo - Validates: kaggle_merged.csv
+	@echo.
+	poetry run python src/data/validate.py --phase merged
+	@echo [OK] Phase 3 validation complete.
+
+validate-phase4:
+	@echo.
+	@echo [PHASE 2] Validation - Phase 4 Outputs
+	@echo ================================================================================
+	@echo - Validates: merged_games.csv
+	@echo.
+	poetry run python src/data/validate.py --phase features
+	@echo [OK] Phase 4 validation complete.
 
 # ────────────────────────────────────────────────────────────────────────────
 # PHASE 3: Transformation ^& Merge
@@ -104,9 +125,9 @@ phase4: phase3
 	@echo [OK] Phase 4 complete.
 
 # ────────────────────────────────────────────────────────────────────────────
-# Full Pipeline (Phases 1-4)
+# Full Pipeline (Phases 1-4 with validation after each phase)
 # ────────────────────────────────────────────────────────────────────────────
-pipeline: clean phase1 phase2 phase3 phase4
+pipeline: clean phase1 validate-phase1 phase3 validate-phase3 phase4 validate-phase4
 	@echo.
 	@echo ================================================================================
 	@echo   ✓ PIPELINE COMPLETE
@@ -121,11 +142,12 @@ pipeline: clean phase1 phase2 phase3 phase4
 	@echo ================================================================================
 
 # ────────────────────────────────────────────────────────────────────────────
-# Data Validation only (without re-running all phases)
+# Data Validation (run all validations)
 # ────────────────────────────────────────────────────────────────────────────
-validate:
-	@echo "Running validation checks on all intermediate datasets..."
-	poetry run $(PYTHON) src/data/validate.py --phase all
+validate: validate-phase1 validate-phase3 validate-phase4
+	@echo.
+	@echo [OK] All validations complete.
+	@echo.
 
 # ────────────────────────────────────────────────────────────────────────────
 # Code Quality Checks
