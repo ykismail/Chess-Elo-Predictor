@@ -43,9 +43,9 @@ report_merged   = "reports/results/validation_merged.txt"
 report_features = "reports/results/validation_features.txt"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PHASE 3: Transformation & Merging
+# PHASE 2: Data Transformation & Merging
 # ─────────────────────────────────────────────────────────────────────────────
-[phase3]
+[phase2]
 name = "transform"
 description = "ECO matching, Stockfish extraction, three-way merge"
 
@@ -59,13 +59,13 @@ input_stockfish_file  = "data/raw/stockfish.csv"
 output_kaggle_merged  = "data/intermediate/kaggle_merged.csv"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PHASE 4: Feature Engineering & Integration
+# PHASE 3: Feature Engineering & Integration
 # ─────────────────────────────────────────────────────────────────────────────
-[phase4]
+[phase3]
 name = "build_features"
 description = "Feature engineering, Lichess integration, final outputs"
 
-# Inputs (from Phase 3)
+# Inputs (from Phase 2)
 input_kaggle_merged   = "data/intermediate/kaggle_merged.csv"
 input_lichess_file    = "data/raw/chess_games.csv"
 input_lichess_sf_file = "data/raw/lichess_stockfish.csv"
@@ -73,6 +73,36 @@ input_lichess_sf_file = "data/raw/lichess_stockfish.csv"
 # Final outputs
 output_games_csv      = "data/intermediate/games.csv"
 output_merged_games   = "data/intermediate/merged_games.csv"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 4: Model Training
+# ─────────────────────────────────────────────────────────────────────────────
+[phase4]
+name = "train"
+description = "Train multiple models with hyperparameter tuning"
+
+# Input (from Phase 3)
+input_merged_games    = "data/intermediate/merged_games.csv"
+
+# Outputs
+models_dir            = "models"
+reports_dir           = "reports/results"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 5: Model Prediction
+# ─────────────────────────────────────────────────────────────────────────────
+[phase5]
+name = "predict"
+description = "Make predictions using trained models"
+
+# Input (from Phase 4)
+input_merged_games    = "data/intermediate/merged_games.csv"
+
+# Model selection (default: random_forest_track_b)
+default_model         = "random_forest_track_b"
+
+# Output
+predictions_dir       = "reports/results"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Feature Engineering & Target Variables
