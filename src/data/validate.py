@@ -1,69 +1,136 @@
+"""
+Phase 2 — Data Validation
+=========================
+Responsibilities:
+  Run quality checks on every intermediate dataset produced by each
+  pipeline phase and print a structured report.
+
+  Call validate_sources()  after Phase 1 (data_loading.py)
+  Call validate_merged()   after Phase 3 (transform_data.py)
+  Call validate_features() after Phase 4 (build_features.py)
+
+No data is written to disk — this phase is read-only.
+"""
+
+import os
+import sys
+
+# ── Path bootstrap ────────────────────────────────────────────────────────────
+script_dir  = os.path.dirname(os.path.abspath(__file__))
+project_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
+if project_dir not in sys.path:
+    sys.path.insert(0, project_dir)
+
 import pandas as pd
+from src.features.build_features import validation_report
 
-def validate(df: pd.DataFrame) -> None:
+# ── Directory paths ───────────────────────────────────────────────────────────
+intermediate_dir = os.path.join(project_dir, "data", "intermediate")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _header(title: str) -> None:
+    print(f"\n{'=' * 60}")
+    print(f"  VALIDATING: {title}")
+    print(f"{'=' * 60}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase-specific validation entry points
+# ─────────────────────────────────────────────────────────────────────────────
+
+def validate_sources() -> None:
     """
-    Print a comprehensive data validation report.
+    Validate the two raw parsed DataFrames produced by Phase 1.
 
-    Covers:
-        - Shape (rows, columns)
-        - Data types per column
-        - Missing values count and percentage
-        - Duplicate rows
-        - Class distribution for target variable
-        - outliers in numeric columns (using IQR method & isolation forest)
+    Reads
+    -----
+    intermediate/parsed_data_uci.csv
+    intermediate/parsed_data_pgn.csv
     """
-    print("=" * 60)
-    print("DATA VALIDATION REPORT")
-    print("=" * 60)
+    parsed_data_uci = pd.read_csv(os.path.join(intermediate_dir, "parsed_data_uci.csv"))
+    parsed_data_pgn = pd.read_csv(os.path.join(intermediate_dir, "parsed_data_pgn.csv"))
 
-    print(f"\nShape: {df.shape[0]:,} rows × {df.shape[1]} columns")
+    _header("parsed_data_uci  (Phase 1 output)")
+    validation_report(parsed_data_uci)
 
-    print("\n── Data Types ──────────────────────────────────────────────")
-    print(df.dtypes.to_string())
+    _header("parsed_data_pgn  (Phase 1 output)")
+    validation_report(parsed_data_pgn)
 
-    print("\n── Missing Values ──────────────────────────────────────────")
-    missing     = df.isnull().sum()
-    missing_pct = (missing / len(df) * 100).round(2)
-    missing_df  = pd.DataFrame({"count": missing, "pct": missing_pct})
-    missing_df  = missing_df[missing_df["count"] > 0]
-    if missing_df.empty:
-        print("No missing values found.")
-    else:
-        print(missing_df.to_string())
 
-    print(f"\n── Duplicates ──────────────────────────────────────────────")
-    dup_count = df.duplicated(subset=["event_id"]).sum() if "event_id" in df.columns else "N/A"
-    print(f"Duplicate event_id rows: {dup_count}")
+def validate_merged() -> None:
+    """
+    Validate the Kaggle-merged dataset produced by Phase 3.
 
-    print("\n── Numeric Summary ─────────────────────────────────────────")
-    # white_elo included here for context only — not a model input feature
-    numeric_cols = [c for c in ["white_elo", "black_elo", "num_moves", "white_acl",
-                    "black_acl", "white_blunders", "black_blunders",
-                    "acl_gap", "game_sharpness"] if c in df.columns]
-    if numeric_cols:
-        print(df[numeric_cols].describe().round(2).to_string())
+    Reads
+    -----
+    intermediate/kaggle_merged.csv
+    """
+    df_kaggle_merged = pd.read_csv(os.path.join(intermediate_dir, "kaggle_merged.csv"))
 
-        print("\n── Outliers (IQR Method) ───────────────────────────────────")
-        outliers_dict = {}
-        for col in numeric_cols:
-            Q1 = df[col].quantile(0.25)
-            Q3 = df[col].quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
-            outlier_mask = (df[col] < lower_bound) | (df[col] > upper_bound)
-            outliers_dict[col] = outlier_mask.sum()
-        
-        outliers_df = pd.DataFrame(list(outliers_dict.items()), columns=["Column", "Outliers count"])
-        print(outliers_df.to_string())
-    print("\n── Class Distribution for Target Variable ──────────────────────────────")
-    if "winner_multiclass" in df.columns:
-        class_dist = df["winner_multiclass"].value_counts(normalize=True).round(4) * 100
-        print("winner_multiclass distribution (%):")
-        print(class_dist.to_string())
-    elif "winner_binary" in df.columns:
-        class_dist = df["winner_binary"].value_counts(normalize=True).round(4) * 100
-        print("winner_binary distribution (%):")
-        print(class_dist.to_string())
-    else:
-        print("No target variable found for class distribution.")
+    _header("kaggle_merged  (Phase 3 output)")
+    validation_report(df_kaggle_merged)
+
+    # ── Source-level join audit ───────────────────────────────────────────────
+    print("\n── Join Audit ───────────────────────────────────────────────")
+    print(f"Total rows after merge  : {len(df_kaggle_merged):,}")
+    if "event_id" in df_kaggle_merged.columns:
+        n_unique = df_kaggle_merged["event_id"].nunique()
+        print(f"Unique event_ids        : {n_unique:,}")
+        n_dup = df_kaggle_merged.duplicated(subset=["event_id"]).sum()
+        print(f"Duplicate event_ids     : {n_dup:,}")
+
+
+def validate_features() -> None:
+    """
+    Validate the fully engineered dataset produced by Phase 4.
+
+    Reads
+    -----
+    intermediate/merged_games.csv
+    """
+    df_merged_games = pd.read_csv(os.path.join(intermediate_dir, "merged_games.csv"))
+
+    _header("merged_games  (Phase 4 output — final engineered dataset)")
+    validation_report(df_merged_games)
+
+    # ── Source breakdown ──────────────────────────────────────────────────────
+    if "source" in df_merged_games.columns:
+        print("\n── Source breakdown ─────────────────────────────────────────")
+        print(df_merged_games["source"].value_counts().to_string())
+
+    # ── Stockfish coverage ────────────────────────────────────────────────────
+    if "has_stockfish" in df_merged_games.columns:
+        print("\n── Stockfish coverage ───────────────────────────────────────")
+        print(df_merged_games["has_stockfish"].value_counts().to_string())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Entry point  — runs all three checkpoints in sequence
+# ─────────────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run data validation checkpoints.")
+    parser.add_argument(
+        "--phase",
+        choices=["sources", "merged", "features", "all"],
+        default="all",
+        help="Which checkpoint to run (default: all).",
+    )
+    args = parser.parse_args()
+
+    if args.phase in ("sources", "all"):
+        validate_sources()
+
+    if args.phase in ("merged", "all"):
+        validate_merged()
+
+    if args.phase in ("features", "all"):
+        validate_features()
+
+    print("\n✓ Phase 2 — Validation Complete.")
