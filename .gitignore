@@ -3,7 +3,7 @@ data/raw/
 data/processed/
 data/interim/
 data/external/
-
+*.csv
 # Python
 __pycache__/
 *.py[cod]
