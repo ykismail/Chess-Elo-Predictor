@@ -152,9 +152,9 @@ lint-all: lint format isort
 # ────────────────────────────────────────────────────────────────────────────
 clean:
 	@echo "Cleaning generated files..."
-	find . -type d -name '__pycache__' -exec rm -rf {} +
-	find . -type f -name '*.pyc' -delete
-	find . -type f -name '.DS_Store' -delete
+	-for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
+	-del /s *.pyc
+	-del /s .DS_Store
 	@echo "✓ Cleanup complete."
 
 # ────────────────────────────────────────────────────────────────────────────
