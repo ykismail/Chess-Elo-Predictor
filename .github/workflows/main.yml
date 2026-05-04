@@ -27,23 +27,19 @@ jobs:
 
     - name: Install dependencies
       run: |
-        poetry install
+        make setup
 
-    - name: Code Quality - Black Formatter Check
+    - name: Code Quality - Format & Lint
       run: |
-        poetry run black --check .
-
-    - name: Code Quality - Flake8 Linter Check
-      run: |
-        poetry run flake8 .
+        make lint-all
 
     - name: Run Tests with Pytest
       run: |
-        poetry run pytest
+        make test
 
-    - name: Run Data Pipeline
+    - name: Run Data Pipeline (All Phases)
       run: |
-        poetry run python scripts/run_pipeline.py
+        make pipeline
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
