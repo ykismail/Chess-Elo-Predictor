@@ -29,3 +29,5 @@ models/*.joblib
 # OS
 .DS_Store
 Thumbs.db
+
+stockfish_preprocessing/stockfish
