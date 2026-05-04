@@ -132,7 +132,7 @@ predict: phase5
 # ────────────────────────────────────────────────────────────────────────────
 # Full Pipeline (Phases 1-3 with validations interleaved)
 # ────────────────────────────────────────────────────────────────────────────
-pipeline: clean phase1 validate-phase1 phase2 validate-phase2 phase3 validate-phase3
+pipeline: clean phase1 validate-phase1 phase2 validate-phase2 phase3 validate-phase3 phase4 phase5
 	@echo "================================================================================"
 	@echo "  DATA PIPELINE COMPLETE"
 	@echo "================================================================================"
