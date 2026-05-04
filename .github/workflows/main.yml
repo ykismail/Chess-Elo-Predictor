@@ -83,15 +83,19 @@ jobs:
         run: |
           (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
       
+      - name: Add Poetry to PATH
+        run: echo "$env:USERPROFILE\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH
+        shell: pwsh
+
       - name: Install dependencies
-        run: poetry install
+        run: python -m poetry install
 
       - name: Install stlite
-        run: poetry run pip install stlite
+        run: python -m poetry run pip install stlite
 
       - name: Build static site
         run: |
-          poetry run stlite build src/visualization/dashboard.py --dest dist
+          python -m poetry run stlite build src/visualization/dashboard.py --dest dist
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

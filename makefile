@@ -39,7 +39,7 @@ help:
 # ────────────────────────────────────────────────────────────────────────────
 setup:
 	@echo [SETUP] Installing dependencies with Poetry...
-	poetry install
+	python -m poetry install
 	@echo [OK] Setup complete.
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ phase1:
 	@echo - Downloading raw data sources (Kaggle, GitHub, Lichess)
 	@echo - Parsing PGN/UCI files into structured DataFrames
 	@echo - Outputs: parsed_data_uci.csv, parsed_data_pgn.csv, eco_openings.csv
-	poetry run python src/data/data_loading.py
+	python -m poetry run python src/data/data_loading.py
 	@echo [OK] Phase 1 complete.
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -61,21 +61,21 @@ validate-phase1:
 	@echo [PHASE 2] Validation - Phase 1 Outputs
 	@echo ================================================================================
 	@echo - Validates: parsed_data_uci.csv, parsed_data_pgn.csv
-	poetry run python src/data/validate.py --phase sources
+	python -m poetry run python src/data/validate.py --phase sources
 	@echo [OK] Phase 1 validation complete.
 
 validate-phase3:
 	@echo [PHASE 2] Validation - Phase 3 Outputs
 	@echo ================================================================================
 	@echo - Validates: kaggle_merged.csv
-	poetry run python src/data/validate.py --phase merged
+	python -m poetry run python src/data/validate.py --phase merged
 	@echo [OK] Phase 3 validation complete.
 
 validate-phase4:
 	@echo [PHASE 2] Validation - Phase 4 Outputs
 	@echo ================================================================================
 	@echo - Validates: merged_games.csv
-	poetry run python src/data/validate.py --phase features
+	python -m poetry run python src/data/validate.py --phase features
 	@echo [OK] Phase 4 validation complete.
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ phase3: phase1
 	@echo - Stockfish feature extraction (engine evaluations)
 	@echo - Inner-join merge: PGN + UCI + Stockfish
 	@echo - Output: kaggle_merged.csv
-	poetry run python src/data/transform.py
+	python -m poetry run python src/data/transform.py
 	@echo [OK] Phase 3 complete.
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ phase4: phase3
 	@echo - Feature engineering: Elo buckets, acl_gap, winner targets
 	@echo - Lichess integration: Harmonise ^& merge Lichess data (load_lichess)
 	@echo - Final outputs: games.csv (~23k Kaggle), merged_games.csv (~43k combined)
-	poetry run python src/data/build_features.py
+	python -m poetry run python src/data/build_features.py
 	@echo [OK] Phase 4 complete.
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -127,19 +127,19 @@ validate: validate-phase1 validate-phase3 validate-phase4
 # ────────────────────────────────────────────────────────────────────────────
 test:
 	@echo "Running tests with pytest..."
-	-poetry run pytest tests/
+	-python -m poetry run pytest tests/
 
 lint:
 	@echo "Running flake8 linter..."
-	-poetry run flake8 src/ scripts/
+	-python -m poetry run flake8 src/ scripts/
 
 format:
 	@echo "Formatting code with black..."
-	-poetry run black src/ scripts/ stockfish_preprocessing/
+	-python -m poetry run black src/ scripts/ stockfish_preprocessing/
 
 isort:
 	@echo "Sorting imports with isort..."
-	-poetry run isort src/ scripts/ stockfish_preprocessing/
+	-python -m poetry run isort src/ scripts/ stockfish_preprocessing/
 
 lint-all: lint format isort
 	@echo "✓ All code quality checks complete."
