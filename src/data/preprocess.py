@@ -18,16 +18,23 @@ from sklearn.impute import SimpleImputer
 
 # Columns derived from white_elo — must be dropped to prevent data leakage
 LEAKAGE_COLS = [
-    "white_elo", "elo_gap", "avg_elo",
-    "elo_bucket_white", "elo_bucket_black",
+    "white_elo",
+    "elo_gap",
+    "avg_elo",
+    "elo_bucket_white",
+    "elo_bucket_black",
     "elo_bucket_black_enc",
-    "winner_binary", "winner_multiclass",
-    "event_id", "source",
-    "moves_san", "moves_uci", "moves_pgn",
+    "winner_binary",
+    "winner_multiclass",
+    "event_id",
+    "source",
+    "moves_san",
+    "moves_uci",
+    "moves_pgn",
     "opening_name",
 ]
 
-TARGET_COL   = "elo_bucket_white_enc"
+TARGET_COL = "elo_bucket_white_enc"
 TARGET_NAMES = ["Beginner", "Intermediate", "Advanced", "Expert", "Master"]
 
 
@@ -63,7 +70,8 @@ def encode_cats(X: pd.DataFrame) -> pd.DataFrame:
     if "termination" in X.columns:
         oe = OrdinalEncoder(
             categories=[["checkmate", "resignation", "draw", "timeout", "unknown"]],
-            handle_unknown="use_encoded_value", unknown_value=-1
+            handle_unknown="use_encoded_value",
+            unknown_value=-1,
         )
         X["termination"] = oe.fit_transform(X[["termination"]])
 
@@ -85,7 +93,8 @@ def encode_cats(X: pd.DataFrame) -> pd.DataFrame:
             X[col] = X[col].fillna("none")
             oe = OrdinalEncoder(
                 categories=[["none", "kingside", "queenside"]],
-                handle_unknown="use_encoded_value", unknown_value=-1
+                handle_unknown="use_encoded_value",
+                unknown_value=-1,
             )
             X[col] = oe.fit_transform(X[[col]])
 
@@ -102,15 +111,15 @@ def impute_missing(X_train, X_val, X_test):
     X_train, X_val, X_test with NaNs filled
     """
     num_cols = X_train.select_dtypes(include=[np.number]).columns.tolist()
-    imputer  = SimpleImputer(strategy="median")
+    imputer = SimpleImputer(strategy="median")
 
     X_train = X_train.copy()
-    X_val   = X_val.copy()
-    X_test  = X_test.copy()
+    X_val = X_val.copy()
+    X_test = X_test.copy()
 
     X_train[num_cols] = imputer.fit_transform(X_train[num_cols])
-    X_val[num_cols]   = imputer.transform(X_val[num_cols])
-    X_test[num_cols]  = imputer.transform(X_test[num_cols])
+    X_val[num_cols] = imputer.transform(X_val[num_cols])
+    X_test[num_cols] = imputer.transform(X_test[num_cols])
 
     return X_train, X_val, X_test
 
@@ -124,15 +133,15 @@ def scale_features(X_train, X_val, X_test):
     X_train_scaled, X_val_scaled, X_test_scaled, fitted scaler
     """
     num_cols = X_train.select_dtypes(include=[np.number]).columns.tolist()
-    scaler   = StandardScaler()
+    scaler = StandardScaler()
 
     X_train_s = X_train.copy()
-    X_val_s   = X_val.copy()
-    X_test_s  = X_test.copy()
+    X_val_s = X_val.copy()
+    X_test_s = X_test.copy()
 
     X_train_s[num_cols] = scaler.fit_transform(X_train[num_cols])
-    X_val_s[num_cols]   = scaler.transform(X_val[num_cols])
-    X_test_s[num_cols]  = scaler.transform(X_test[num_cols])
+    X_val_s[num_cols] = scaler.transform(X_val[num_cols])
+    X_test_s[num_cols] = scaler.transform(X_test[num_cols])
 
     return X_train_s, X_val_s, X_test_s, scaler
 
@@ -184,7 +193,9 @@ def load_and_split(filepath: str, random_state: int = 42):
     # Scale
     X_train, X_val, X_test, scaler = scale_features(X_train, X_val, X_test)
 
-    print(f"\nSplit: Train {len(X_train):,} | Val {len(X_val):,} | Test {len(X_test):,}")
+    print(
+        f"\nSplit: Train {len(X_train):,} | Val {len(X_val):,} | Test {len(X_test):,}"
+    )
     print(f"Target distribution (train):")
     counts = y_train.value_counts().sort_index()
     for enc, label in enumerate(TARGET_NAMES):

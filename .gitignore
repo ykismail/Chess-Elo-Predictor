@@ -5,6 +5,10 @@ data/interim/
 data/intermediate
 data/external/
 
+# CSV files (large datasets)
+*.csv
+!README.csv
+
 # Python
 __pycache__/
 *.py[cod]
