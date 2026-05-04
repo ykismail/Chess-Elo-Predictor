@@ -11,57 +11,46 @@ CONFIG ?= configs/config.toml
 # Help target
 # ────────────────────────────────────────────────────────────────────────────
 help:
-	@cmd /c echo.
 	@echo Chess Elo Predictor - Multi-Phase Pipeline
 	@echo ================================================================================
-	@cmd /c echo.
 	@echo Setup ^& Install:
 	@echo   make setup           - Install Poetry dependencies
-	@cmd /c echo.
 	@echo Pipeline Phases:
 	@echo   make phase1          - Phase 1: Data Loading ^& Parsing
 	@echo   make phase3          - Phase 3: Transformation ^& Merge
 	@echo   make phase4          - Phase 4: Feature Engineering ^& Integration
 	@echo   make pipeline        - Run entire pipeline with validations
-	@cmd /c echo.
 	@echo Validation:
 	@echo   make validate-phase1 - Validate Phase 1 outputs
 	@echo   make validate-phase3 - Validate Phase 3 outputs
 	@echo   make validate-phase4 - Validate Phase 4 outputs
 	@echo   make validate        - Run all validations
-	@cmd /c echo.
 	@echo Code Quality:
 	@echo   make test            - Run pytest
 	@echo   make lint            - Run flake8
 	@echo   make format          - Format with black
 	@echo   make isort           - Sort imports with isort
 	@echo   make lint-all        - Run all lint checks
-	@cmd /c echo.
 	@echo Utilities:
 	@echo   make clean           - Remove generated files
-	@cmd /c echo.
 
 # ────────────────────────────────────────────────────────────────────────────
 # Setup
 # ────────────────────────────────────────────────────────────────────────────
 setup:
-	@cmd /c echo.
 	@echo [SETUP] Installing dependencies with Poetry...
 	poetry install
 	@echo [OK] Setup complete.
-	@cmd /c echo.
 
 # ────────────────────────────────────────────────────────────────────────────
 # PHASE 1: Data Loading & Parsing
 # ────────────────────────────────────────────────────────────────────────────
 phase1:
-	@cmd /c echo.
 	@echo [PHASE 1] Data Loading ^& Parsing
 	@echo ================================================================================
 	@echo - Downloading raw data sources (Kaggle, GitHub, Lichess)
 	@echo - Parsing PGN/UCI files into structured DataFrames
 	@echo - Outputs: parsed_data_uci.csv, parsed_data_pgn.csv, eco_openings.csv
-	@cmd /c echo.
 	poetry run python src/data/data_loading.py
 	@echo [OK] Phase 1 complete.
 
@@ -69,29 +58,23 @@ phase1:
 # PHASE 2: Data Validation (read-only)
 # ────────────────────────────────────────────────────────────────────────────
 validate-phase1:
-	@cmd /c echo.
 	@echo [PHASE 2] Validation - Phase 1 Outputs
 	@echo ================================================================================
 	@echo - Validates: parsed_data_uci.csv, parsed_data_pgn.csv
-	@cmd /c echo.
 	poetry run python src/data/validate.py --phase sources
 	@echo [OK] Phase 1 validation complete.
 
 validate-phase3:
-	@cmd /c echo.
 	@echo [PHASE 2] Validation - Phase 3 Outputs
 	@echo ================================================================================
 	@echo - Validates: kaggle_merged.csv
-	@cmd /c echo.
 	poetry run python src/data/validate.py --phase merged
 	@echo [OK] Phase 3 validation complete.
 
 validate-phase4:
-	@cmd /c echo.
 	@echo [PHASE 2] Validation - Phase 4 Outputs
 	@echo ================================================================================
 	@echo - Validates: merged_games.csv
-	@cmd /c echo.
 	poetry run python src/data/validate.py --phase features
 	@echo [OK] Phase 4 validation complete.
 
@@ -99,14 +82,12 @@ validate-phase4:
 # PHASE 3: Transformation ^& Merge
 # ────────────────────────────────────────────────────────────────────────────
 phase3: phase1
-	@cmd /c echo.
 	@echo [PHASE 3] Transformation ^& Merge
 	@echo ================================================================================
 	@echo - ECO opening matching (PGN to opening codes)
 	@echo - Stockfish feature extraction (engine evaluations)
 	@echo - Inner-join merge: PGN + UCI + Stockfish
 	@echo - Output: kaggle_merged.csv
-	@cmd /c echo.
 	poetry run python src/data/transform.py
 	@echo [OK] Phase 3 complete.
 
@@ -114,13 +95,11 @@ phase3: phase1
 # PHASE 4: Feature Engineering ^& Integration
 # ────────────────────────────────────────────────────────────────────────────
 phase4: phase3
-	@cmd /c echo.
 	@echo [PHASE 4] Feature Engineering ^& Integration
 	@echo ================================================================================
 	@echo - Feature engineering: Elo buckets, acl_gap, winner targets
 	@echo - Lichess integration: Harmonise ^& merge Lichess data (load_lichess)
 	@echo - Final outputs: games.csv (~23k Kaggle), merged_games.csv (~43k combined)
-	@cmd /c echo.
 	poetry run python src/data/build_features.py
 	@echo [OK] Phase 4 complete.
 
@@ -128,26 +107,20 @@ phase4: phase3
 # Full Pipeline (Phases 1-4 with validation after each phase)
 # ────────────────────────────────────────────────────────────────────────────
 pipeline: clean phase1 validate-phase1 phase3 validate-phase3 phase4 validate-phase4
-	@cmd /c echo.
 	@echo ================================================================================
 	@echo   ✓ PIPELINE COMPLETE
 	@echo ================================================================================
-	@cmd /c echo.
 	@echo   Outputs:
 	@echo   - games.csv              (~23k Kaggle games with Stockfish)
 	@echo   - merged_games.csv       (~43k combined games)
-	@cmd /c echo.
 	@echo   Ready for modeling ^& analysis!
-	@cmd /c echo.
 	@echo ================================================================================
 
 # ────────────────────────────────────────────────────────────────────────────
 # Data Validation (run all validations)
 # ────────────────────────────────────────────────────────────────────────────
 validate: validate-phase1 validate-phase3 validate-phase4
-	@cmd /c echo.
 	@echo [OK] All validations complete.
-	@cmd /c echo.
 
 # ────────────────────────────────────────────────────────────────────────────
 # Code Quality Checks
