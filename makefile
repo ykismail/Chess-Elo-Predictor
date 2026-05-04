@@ -152,9 +152,9 @@ lint-all: lint format isort
 # ────────────────────────────────────────────────────────────────────────────
 clean:
 	@echo "Cleaning generated files..."
-	powershell -Command "Get-ChildItem -Path . -Include __pycache__ -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
-	powershell -Command "Get-ChildItem -Path . -Include *.pyc -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue"
-	powershell -Command "Get-ChildItem -Path . -Include .DS_Store -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue"
+	find . -type d -name '__pycache__' -exec rm -rf {} +
+	find . -type f -name '*.pyc' -delete
+	find . -type f -name '.DS_Store' -delete
 	@echo "✓ Cleanup complete."
 
 # ────────────────────────────────────────────────────────────────────────────
