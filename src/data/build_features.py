@@ -20,7 +20,7 @@ import os
 import sys
 
 # ── Path bootstrap ────────────────────────────────────────────────────────────
-script_dir  = os.path.dirname(os.path.abspath(__file__))
+script_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
 if project_dir not in sys.path:
     sys.path.insert(0, project_dir)
@@ -30,13 +30,14 @@ import pandas as pd
 from load_data import integrate_datasets
 
 # ── Directory paths ───────────────────────────────────────────────────────────
-raw_dir          = os.path.join(project_dir, "data", "raw")
+raw_dir = os.path.join(project_dir, "data", "raw")
 intermediate_dir = os.path.join(project_dir, "data", "intermediate")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Feature engineering on Kaggle data
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -58,7 +59,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     # ── Elo skill-tier classification target ──────────────────────────────────
-    elo_bins   = [0, 1000, 1500, 2000, 2500, 9999]
+    elo_bins = [0, 1000, 1500, 2000, 2500, 9999]
     elo_labels = ["Beginner", "Intermediate", "Advanced", "Expert", "Master"]
 
     df["elo_bucket_white"] = pd.cut(
@@ -70,8 +71,11 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # ── Ordinal encoding of skill tier ───────────────────────────────────────
     ordinal_map = {
-        "Beginner": 0, "Intermediate": 1, "Advanced": 2,
-        "Expert": 3, "Master": 4,
+        "Beginner": 0,
+        "Intermediate": 1,
+        "Advanced": 2,
+        "Expert": 3,
+        "Master": 4,
     }
     df["elo_bucket_white_categorical"] = df["elo_bucket_white"].map(ordinal_map)
     df["elo_bucket_black_categorical"] = df["elo_bucket_black"].map(ordinal_map)
@@ -80,7 +84,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df["acl_gap"] = (df["white_acl"] - df["black_acl"]).round(2)
 
     # ── Winner target variables ───────────────────────────────────────────────
-    df["winner_binary"]     = df["result"].map({"1-0": 1, "0-1": 0})
+    df["winner_binary"] = df["result"].map({"1-0": 1, "0-1": 0})
     df["winner_multiclass"] = df["result"].map({"0-1": 0, "1/2-1/2": 1, "1-0": 2})
 
     print("Engineered features added to Kaggle data.")
@@ -94,6 +98,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. Validation report  (kept here so build_features is self-contained)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def validation_report(df: pd.DataFrame) -> None:
     """
@@ -111,10 +116,10 @@ def validation_report(df: pd.DataFrame) -> None:
     print(df.dtypes.to_string())
 
     print("\n── Missing Values ──────────────────────────────────────────")
-    missing     = df.isnull().sum()
+    missing = df.isnull().sum()
     missing_pct = (missing / len(df) * 100).round(2)
-    missing_df  = pd.DataFrame({"count": missing, "pct": missing_pct})
-    missing_df  = missing_df[missing_df["count"] > 0]
+    missing_df = pd.DataFrame({"count": missing, "pct": missing_pct})
+    missing_df = missing_df[missing_df["count"] > 0]
     if missing_df.empty:
         print("No missing values found.")
     else:
@@ -122,18 +127,23 @@ def validation_report(df: pd.DataFrame) -> None:
 
     print("\n── Duplicates ──────────────────────────────────────────────")
     dup_count = (
-        df.duplicated(subset=["event_id"]).sum()
-        if "event_id" in df.columns
-        else "N/A"
+        df.duplicated(subset=["event_id"]).sum() if "event_id" in df.columns else "N/A"
     )
     print(f"Duplicate event_id rows: {dup_count}")
 
     print("\n── Numeric Summary ─────────────────────────────────────────")
     numeric_cols = [
-        c for c in [
-            "white_elo", "black_elo", "num_moves", "white_acl",
-            "black_acl", "white_blunders", "black_blunders",
-            "acl_gap", "game_sharpness",
+        c
+        for c in [
+            "white_elo",
+            "black_elo",
+            "num_moves",
+            "white_acl",
+            "black_acl",
+            "white_blunders",
+            "black_blunders",
+            "acl_gap",
+            "game_sharpness",
         ]
         if c in df.columns
     ]
@@ -144,8 +154,8 @@ def validation_report(df: pd.DataFrame) -> None:
         outliers = {}
         for col in numeric_cols:
             Q1, Q3 = df[col].quantile(0.25), df[col].quantile(0.75)
-            IQR    = Q3 - Q1
-            mask   = (df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)
+            IQR = Q3 - Q1
+            mask = (df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)
             outliers[col] = mask.sum()
         out_df = pd.DataFrame(
             list(outliers.items()), columns=["Column", "Outliers count"]
@@ -153,8 +163,7 @@ def validation_report(df: pd.DataFrame) -> None:
         out_df["Pct (%)"] = (out_df["Outliers count"] / len(df) * 100).round(2)
         out_df = out_df[out_df["Outliers count"] > 0]
         print(
-            "No outliers detected." if out_df.empty
-            else out_df.to_string(index=False)
+            "No outliers detected." if out_df.empty else out_df.to_string(index=False)
         )
     else:
         print("No numeric columns found.")
@@ -165,8 +174,13 @@ def validation_report(df: pd.DataFrame) -> None:
 
     print("\n── Target: elo_bucket_white_categorical (ordinal) ──────────")
     if "elo_bucket_white_categorical" in df.columns:
-        label_map = {0: "Beginner", 1: "Intermediate", 2: "Advanced",
-                     3: "Expert",   4: "Master"}
+        label_map = {
+            0: "Beginner",
+            1: "Intermediate",
+            2: "Advanced",
+            3: "Expert",
+            4: "Master",
+        }
         print(
             df["elo_bucket_white_categorical"]
             .value_counts()
@@ -181,6 +195,7 @@ def validation_report(df: pd.DataFrame) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. Build full pipeline
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def build_feature_pipeline() -> pd.DataFrame:
     """
@@ -210,7 +225,7 @@ def build_feature_pipeline() -> pd.DataFrame:
 
     # Tag the Kaggle partition — these two lines were in data_loading.py
     # between engineer_features and load_lichess
-    df_kaggle_engineered["source"]        = "kaggle_pgn"
+    df_kaggle_engineered["source"] = "kaggle_pgn"
     df_kaggle_engineered["has_stockfish"] = True
 
     # ── Save Kaggle-only subset ───────────────────────────────────────────────
@@ -222,8 +237,8 @@ def build_feature_pipeline() -> pd.DataFrame:
     # (was commented block #4 in data_loading.py)
     # integrate_datasets() calls load_lichess() internally, which performs
     # its own harmonisation + feature engineering for the Lichess partition.
-    chess_games_path  = os.path.join(raw_dir, "chess_games.csv")
-    lichess_sf_path   = os.path.join(raw_dir, "lichess_stockfish.csv")
+    chess_games_path = os.path.join(raw_dir, "chess_games.csv")
+    lichess_sf_path = os.path.join(raw_dir, "lichess_stockfish.csv")
 
     print("\nIntegrating Lichess dataset...")
     df_combined = integrate_datasets(
