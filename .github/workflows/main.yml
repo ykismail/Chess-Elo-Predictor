@@ -24,6 +24,10 @@ jobs:
     - name: Install Poetry
       run: |
         (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+      
+    - name: Add Poetry to PATH
+      run: echo "$env:USERPROFILE\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH
+      shell: pwsh
 
     - name: Cache Poetry dependencies
       uses: actions/cache@v3
