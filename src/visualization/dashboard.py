@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import os
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -196,11 +197,16 @@ h2 {
 
 # ── Load & normalise ──────────────────────────────────────────────────────────
 @st.cache_data
+@st.cache_data
 def load_data():
-    df = pd.read_csv(
-        r"C:\Users\abdelrahman\Desktop\college\data_science"
-        r"\Chess-Elo-Predictor\data\intermediate\merged_games.csv"
-    )
+    # 1. Get the directory of the current script (dashboard.py)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # 2. Navigate up two levels to the project root, then into the data folder
+    file_path = os.path.join(current_dir, "..", "..", "data", "intermediate", "merged_games.csv")
+    
+    # 3. Read the CSV using the dynamic path
+    df = pd.read_csv(os.path.abspath(file_path))
 
     # ── winner_multiclass: 0=Black, 1=Draw, 2=White ──
     df["outcome"] = df["winner_multiclass"].map({0: "black", 1: "draw", 2: "white"})
