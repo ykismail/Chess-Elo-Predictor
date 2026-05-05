@@ -154,6 +154,18 @@ jobs:
           "
         continue-on-error: true
 
+      - name: Generate Static MLflow Report
+        run: |
+          python -m poetry run python scripts/generate_mlflow_report.py
+        continue-on-error: true
+
+      - name: Upload MLflow Static Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-static-report
+          path: dist/mlflow/
+        if: always()
+
   cd:
     # needs: ci
     if: github.ref == 'refs/heads/Abdelrahman' && github.event_name == 'push'
@@ -188,6 +200,13 @@ jobs:
 
       - name: Generate Static Dashboard
         run: python -m poetry run python scripts/generate_static_dashboard.py
+
+      - name: Download MLflow Static Report
+        uses: actions/download-artifact@v4
+        with:
+          name: mlflow-static-report
+          path: dist/mlflow/
+        continue-on-error: true
 
       - name: Copy Reports to Static Site
         run: |
