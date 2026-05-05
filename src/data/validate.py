@@ -14,11 +14,18 @@ No data is written to disk — this phase is read-only.
 
 import os
 import sys
-import tomllib
 
+# ── Path bootstrap ────────────────────────────────────────────────────────────
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
+if project_dir not in sys.path:
+    sys.path.insert(0, project_dir)
 
 import pandas as pd
 from src.features.build_features import validation_report
+
+# ── Directory paths ───────────────────────────────────────────────────────────
+intermediate_dir = os.path.join(project_dir, "data", "intermediate")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -37,7 +44,7 @@ def _header(title: str) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def validate_sources(intermediate_directory_path: str) -> None:
+def validate_sources() -> None:
     """
     Validate the two raw parsed DataFrames produced by Phase 1.
 
@@ -46,8 +53,8 @@ def validate_sources(intermediate_directory_path: str) -> None:
     intermediate/parsed_data_uci.csv
     intermediate/parsed_data_pgn.csv
     """
-    parsed_data_uci = pd.read_csv(os.path.join(intermediate_directory_path, "parsed_data_uci.csv"))
-    parsed_data_pgn = pd.read_csv(os.path.join(intermediate_directory_path, "parsed_data_pgn.csv"))
+    parsed_data_uci = pd.read_csv(os.path.join(intermediate_dir, "parsed_data_uci.csv"))
+    parsed_data_pgn = pd.read_csv(os.path.join(intermediate_dir, "parsed_data_pgn.csv"))
 
     _header("parsed_data_uci  (Phase 1 output)")
     validation_report(parsed_data_uci)
@@ -56,7 +63,7 @@ def validate_sources(intermediate_directory_path: str) -> None:
     validation_report(parsed_data_pgn)
 
 
-def validate_merged(intermediate_directory_path: str) -> None:
+def validate_merged() -> None:
     """
     Validate the Kaggle-merged dataset produced by Phase 3.
 
@@ -64,7 +71,7 @@ def validate_merged(intermediate_directory_path: str) -> None:
     -----
     intermediate/kaggle_merged.csv
     """
-    df_kaggle_merged = pd.read_csv(os.path.join(intermediate_directory_path, "kaggle_merged.csv"))
+    df_kaggle_merged = pd.read_csv(os.path.join(intermediate_dir, "kaggle_merged.csv"))
 
     _header("kaggle_merged  (Phase 3 output)")
     validation_report(df_kaggle_merged)
@@ -79,7 +86,7 @@ def validate_merged(intermediate_directory_path: str) -> None:
         print(f"Duplicate event_ids     : {n_dup:,}")
 
 
-def validate_features(intermediate_directory_path: str) -> None:
+def validate_features() -> None:
     """
     Validate the fully engineered dataset produced by Phase 4.
 
@@ -87,7 +94,7 @@ def validate_features(intermediate_directory_path: str) -> None:
     -----
     intermediate/merged_games.csv
     """
-    df_merged_games = pd.read_csv(os.path.join(intermediate_directory_path, "merged_games.csv"))
+    df_merged_games = pd.read_csv(os.path.join(intermediate_dir, "merged_games.csv"))
 
     _header("merged_games  (Phase 4 output — final engineered dataset)")
     validation_report(df_merged_games)
@@ -119,19 +126,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    with open("configs/config.toml", "rb") as f:
-        config = tomllib.load(f)
-    
-    paths = config["paths"]
-    intermediate_directory = paths["intermediate_dir"]
-
     if args.phase in ("sources", "all"):
-        validate_sources(intermediate_directory)
+        validate_sources()
 
     if args.phase in ("merged", "all"):
-        validate_merged(intermediate_directory)
+        validate_merged()
 
     if args.phase in ("features", "all"):
-        validate_features(intermediate_directory)
+        validate_features()
 
     print("\n✓ Phase 2 — Validation Complete.")
