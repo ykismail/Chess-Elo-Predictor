@@ -16,7 +16,6 @@ dependencies = [
     "mlflow (>=3.10.1,<4.0.0)",
     "kaggle (>=2.1.0,<3.0.0)",
     "imbalanced-learn (>=0.14.1,<0.15.0)"
-    "kaggle (>=2.1.0,<3.0.0)",
     "plotly (>=6.7.0,<7.0.0)"
 ]
 [tool.poetry]
