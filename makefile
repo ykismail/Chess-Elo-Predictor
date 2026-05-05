@@ -2,7 +2,7 @@
 # ====================================================
 # Orchestrates data loading, validation, transformation, and feature engineering.
 
-.PHONY: help setup pipeline phase1 validate-phase1 phase2 validate-phase2 phase3 validate-phase3 phase4 train phase5 predict clean test test-unit test-integration test-coverage test-report dashboard lint format isort lint-all
+.PHONY: help setup pipeline phase1 validate-phase1 phase2 validate-phase2 phase3 validate-phase3 phase4 train phase5 predict clean test test-unit test-integration test-coverage test-report dashboard mlflow-report lint format isort lint-all
 
 PYTHON ?= python
 CONFIG ?= configs/config.toml
@@ -33,6 +33,7 @@ help:
 	@echo "  make test-report     - Generate HTML test reports"
 	@echo "Deployment:"
 	@echo "  make dashboard       - Generate static HTML dashboard for GitHub Pages"
+	@echo "  make mlflow-report   - Generate static MLflow experiment report"
 	@echo "Code Quality:"
 	@echo "  make lint            - Run flake8"
 	@echo "  make format          - Format with black"
@@ -179,6 +180,11 @@ dashboard:
 	python -m poetry run python scripts/generate_static_dashboard.py
 	@echo "✓ Dashboard generated in dist/"
 	@echo "  Open in browser: dist/index.html"
+
+mlflow-report:
+	@echo "Generating static MLflow reports..."
+	python -m poetry run python scripts/generate_mlflow_report.py
+	@echo "✓ MLflow report generated in dist/mlflow/"
 
 lint:
 	@echo "Running flake8 linter..."

@@ -303,6 +303,26 @@ class StaticDashboardGenerator:
         </section>
         
         <section>
+            <h2>Model Experiments</h2>
+            <div class="grid">
+                <div class="stat-card">
+                    <h3>📊 MLflow Tracking</h3>
+                    <p>Experiment runs and metrics</p>
+                    <p style="font-size: 0.9rem; color: #9ca3af;">
+                        <a href="./mlflow/index.html" style="color: #c9a227; text-decoration: none;">View MLflow Dashboard →</a>
+                    </p>
+                </div>
+                <div class="stat-card">
+                    <h3>🎯 Model Registry</h3>
+                    <p>Trained models and versions</p>
+                    <p style="font-size: 0.9rem; color: #9ca3af;">
+                        Run: <code>mlflow ui</code> locally
+                    </p>
+                </div>
+            </div>
+        </section>
+        
+        <section>
             <h2>Resources</h2>
             <div class="grid">
                 <div class="stat-card">
