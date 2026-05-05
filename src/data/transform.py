@@ -19,7 +19,6 @@ Output
 
 import os
 import sys
-import tomllib
 
 # ── Path bootstrap ────────────────────────────────────────────────────────────
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -46,7 +45,7 @@ external_dir = os.path.join(project_dir, "data", "external")
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def load_parsed_data(intermediate_directory: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def load_parsed_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Load the intermediate CSVs written by Phase 1 (data_loading.py).
 
@@ -185,15 +184,8 @@ def save_kaggle_merged(df_kaggle: pd.DataFrame) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    with open("configs/config.toml", "rb") as f:
-        config = tomllib.load(f)
-    
-    paths = config["paths"]
-    raw_directory = paths["raw_data_dir"]
-    intermediate_directory = paths["intermediate_dir"]
-    external_directory = paths["external_dir"]
     # 1. Load Phase-1 outputs
-    parsed_data_uci, parsed_data_pgn = load_parsed_data(intermediate_directory)
+    parsed_data_uci, parsed_data_pgn = load_parsed_data()
 
     # 2. ECO matching (previously commented block #1 in data_loading.py)
     parsed_data_pgn = apply_eco_matching(parsed_data_pgn)
