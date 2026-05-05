@@ -51,6 +51,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        peotry lock
         make setup
 
     - name: Code Quality - Format & Lint
