@@ -110,11 +110,11 @@ jobs:
           node-version: '20'
 
     
-      - name: Install stlite (Python)
-        run: python -m poetry run pip install -U stlite
+      - name: Install stlite
+        run: npm install -g stlite
 
       - name: Build static site
-        run: python -m poetry run stlite build src/visualization/dashboard.py --dest dist
+        run: stlite build src/visualization/dashboard.py --dest dist
 
 
       # - name: Build static site
