@@ -192,7 +192,7 @@ jobs:
         if: always()
 
   cd:
-    # needs: ci
+    needs: ci
     if: github.ref == 'refs/heads/Abdelrahman' && github.event_name == 'push'
     runs-on: windows-latest
     permissions:
