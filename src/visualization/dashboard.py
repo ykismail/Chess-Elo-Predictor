@@ -19,25 +19,25 @@ st.markdown(
 
 html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 
-.stApp { background: #0d0f14; color: #e8e4dc; }
+.stApp { background: #f9fafb; color: #111827; }
 
 #MainMenu, footer, header { visibility: hidden; }
 .block-container { padding: 2rem 2.5rem 3rem !important; max-width: 1400px !important; }
 
 [data-testid="stSidebar"] {
-    background: #131620 !important;
-    border-right: 1px solid #1e2230 !important;
+    background: #ffffff !important;
+    border-right: 1px solid #e5e7eb !important;
 }
 
 [data-testid="stMetric"] {
-    background: #131620;
-    border: 1px solid #1e2230;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
     border-radius: 10px;
     padding: 1.1rem 1.25rem 1rem !important;
     overflow: hidden;
     transition: border-color 0.2s;
 }
-[data-testid="stMetric"]:hover { border-color: #2e3450; }
+[data-testid="stMetric"]:hover { border-color: #d1d5db; }
 [data-testid="stMetricLabel"] {
     font-family: 'DM Mono', monospace !important;
     font-size: 11px !important;
@@ -49,7 +49,7 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
     font-family: 'Playfair Display', serif !important;
     font-size: 2rem !important;
     font-weight: 600 !important;
-    color: #e8e4dc !important;
+    color: #111827 !important;
     line-height: 1.15 !important;
 }
 [data-testid="stMetricDelta"] {
@@ -57,27 +57,27 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
     font-size: 11px !important;
 }
 
-hr { border-color: #1e2230 !important; margin: 1.5rem 0 !important; }
+hr { border-color: #e5e7eb !important; margin: 1.5rem 0 !important; }
 
 h2 {
     font-family: 'Playfair Display', serif !important;
     font-size: 1.25rem !important;
     font-weight: 600 !important;
-    color: #c9c3b8 !important;
+    color: #111827 !important;
 }
 
 .insight-box {
-    background: #131620;
-    border: 1px solid #1e2230;
-    border-left: 3px solid #c9a227;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-left: 3px solid #b58900;
     border-radius: 8px;
     padding: 1rem 1.25rem;
     margin-bottom: 0.75rem;
     font-size: 13px;
-    color: #9ca3af;
+    color: #4b5563;
     line-height: 1.6;
 }
-.insight-box strong { color: #e8e4dc; font-weight: 500; }
+.insight-box strong { color: #111827; font-weight: 600; }
 
 .tag {
     display: inline-block;
@@ -87,10 +87,10 @@ h2 {
     border-radius: 20px;
     letter-spacing: 0.04em;
 }
-.tag-green  { background: #1a3328; color: #5a9e6f; border: 1px solid #244a37; }
-.tag-red    { background: #2d1a1a; color: #c0392b; border: 1px solid #4a2222; }
-.tag-amber  { background: #2d2410; color: #c9a227; border: 1px solid #4a3a18; }
-.tag-slate  { background: #1a1e2a; color: #7c8a9e; border: 1px solid #252c3a; }
+.tag-green  { background: #def7ec; color: #03543f; border: 1px solid #8ce0be; }
+.tag-red    { background: #fde8e8; color: #9b1c1c; border: 1px solid #f8b4b4; }
+.tag-amber  { background: #fdf6b2; color: #723b13; border: 1px solid #e3c56b; }
+.tag-slate  { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
 
 .dash-header {
     display: flex;
@@ -98,12 +98,12 @@ h2 {
     justify-content: space-between;
     margin-bottom: 2rem;
     padding-bottom: 1.5rem;
-    border-bottom: 1px solid #1e2230;
+    border-bottom: 1px solid #e5e7eb;
 }
 .dash-eyebrow {
     font-family: 'DM Mono', monospace;
     font-size: 11px;
-    color: #c9a227;
+    color: #b58900;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     margin-bottom: 4px;
@@ -112,14 +112,14 @@ h2 {
     font-family: 'Playfair Display', serif;
     font-size: 2.2rem;
     font-weight: 700;
-    color: #e8e4dc;
+    color: #111827;
     line-height: 1.1;
     margin: 0;
 }
 .dash-subtitle {
     font-family: 'DM Mono', monospace;
     font-size: 12px;
-    color: #4b5563;
+    color: #6b7280;
     margin-top: 6px;
 }
 .live-pill {
@@ -128,16 +128,16 @@ h2 {
     gap: 7px;
     font-family: 'DM Mono', monospace;
     font-size: 11px;
-    color: #5a9e6f;
-    background: #0f1f16;
-    border: 1px solid #1e3a28;
+    color: #03543f;
+    background: #def7ec;
+    border: 1px solid #8ce0be;
     border-radius: 20px;
     padding: 5px 14px;
 }
 .live-dot {
     width: 7px; height: 7px;
     border-radius: 50%;
-    background: #5a9e6f;
+    background: #03543f;
     animation: pulse 2s infinite;
 }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -145,14 +145,14 @@ h2 {
 .panel-title {
     font-family: 'DM Sans', sans-serif;
     font-size: 13px;
-    font-weight: 500;
-    color: #c9c3b8;
+    font-weight: 600;
+    color: #111827;
     margin-bottom: 2px;
 }
 .panel-desc {
     font-family: 'DM Sans', sans-serif;
     font-size: 11px;
-    color: #4b5563;
+    color: #6b7280;
     margin-bottom: 0.75rem;
     line-height: 1.4;
 }
@@ -165,12 +165,12 @@ h2 {
 }
 .sb-track {
     flex:1; height:22px; border-radius:3px; overflow:hidden;
-    display:flex; background:#0d0f14; border:1px solid #1e2230;
+    display:flex; background:#f9fafb; border:1px solid #e5e7eb;
 }
 .sb-seg {
     height:100%; display:flex; align-items:center; justify-content:center;
     font-family:'DM Mono',monospace; font-size:10px;
-    color:rgba(255,255,255,0.85); transition:opacity 0.15s;
+    color:rgba(255,255,255,0.95); transition:opacity 0.15s;
 }
 .sb-seg:hover { opacity:0.8; }
 
@@ -181,11 +181,11 @@ h2 {
     width:78px; text-align:right; flex-shrink:0;
 }
 .acl-track {
-    flex:1; height:32px; background:#0d0f14;
-    border:1px solid #1e2230; border-radius:3px; position:relative;
+    flex:1; height:32px; background:#f9fafb;
+    border:1px solid #e5e7eb; border-radius:3px; position:relative;
 }
-.acl-zero  { position:absolute; left:50%; top:0; bottom:0; width:1px; background:#2e3450; }
-.acl-whisker { position:absolute; top:50%; height:1px; background:#4b5563; }
+.acl-zero  { position:absolute; left:50%; top:0; bottom:0; width:1px; background:#d1d5db; }
+.acl-whisker { position:absolute; top:50%; height:1px; background:#9ca3af; }
 .acl-box   { position:absolute; top:5px; bottom:5px; border-radius:2px; border:1.5px solid; }
 .acl-median{ position:absolute; top:3px; bottom:3px; width:2.5px; border-radius:1px; }
 </style>
@@ -223,11 +223,11 @@ df = load_data()
 df_sf = df[df["has_stockfish"] == True]
 
 # ── Colour palette ────────────────────────────────────────────────────────────
-WHT_COL = "#5a9e6f"
-BLK_COL = "#c0392b"
-DRW_COL = "#7c8a9e"
-GOLD = "#c9a227"
-BORDER = "#1e2230"
+WHT_COL = "#4C72B0"  # Soft blue for white relative theme consistency
+BLK_COL = "#C44E52"  # Distinct red
+DRW_COL = "#8c9fb1"
+GOLD = "#b58900"
+BORDER = "#e5e7eb"
 MUTED = "#6b7280"
 
 PLOTLY_BASE = dict(
@@ -273,7 +273,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         "<div style='font-family:DM Mono,monospace;font-size:10px;"
-        "color:#3a4050;text-align:center'>Chess Elo Predictor · v2.1</div>",
+        "color:#9ca3af;text-align:center'>Chess Elo Predictor · v2.1</div>",
         unsafe_allow_html=True,
     )
 
