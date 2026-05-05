@@ -199,7 +199,7 @@ h2 {
 def load_data():
     df = pd.read_csv(
         r"C:\Users\abdelrahman\Desktop\college\data_science"
-        r"\Chess-Elo-Predictor\data\merged_games.csv"
+        r"\Chess-Elo-Predictor\data\intermediate\merged_games.csv"
     )
 
     # ── winner_multiclass: 0=Black, 1=Draw, 2=White ──

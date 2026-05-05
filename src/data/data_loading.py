@@ -13,14 +13,6 @@ Outputs
   data/external/eco_openings.csv          — Lichess ECO opening database
 """
 
-import os
-import sys
-
-# ── Path bootstrap ────────────────────────────────────────────────────────────
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
-if project_dir not in sys.path:
-    sys.path.insert(0, project_dir)
 
 import io
 import re
@@ -28,21 +20,15 @@ import zipfile
 import requests
 import pandas as pd
 from load_data import parse_uci, parse_pgn
-
-# ── Directory setup ───────────────────────────────────────────────────────────
-raw_dir = os.path.join(project_dir, "data", "raw")
-intermediate_dir = os.path.join(project_dir, "data", "intermediate")
-external_dir = os.path.join(project_dir, "data", "external")
-for d in (raw_dir, intermediate_dir, external_dir):
-    os.makedirs(d, exist_ok=True)
-
+import os
+import tomllib
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Data Acquisition
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def acquire_data() -> None:
+def acquire_data(raw_directory_path: str, eco_opening_path: str) -> None:
     """
     Download all raw data sources:
       - Kaggle competition files (finding-elo):
@@ -62,14 +48,14 @@ def acquire_data() -> None:
 
     # ── Kaggle competition files ──────────────────────────────────────────────
     print("Downloading Kaggle competition files (finding-elo)...")
-    api.competition_download_files("finding-elo", path=raw_dir)
+    api.competition_download_files("finding-elo", path=raw_directory_path)
 
     # ── Kaggle dataset: chess_games.csv ──────────────────────────────────────
     print("Downloading chess_games.csv from Kaggle dataset...")
     api.dataset_download_file(
         "mysarahmadbhat/online-chess-games",
         "chess_games.csv",
-        path=raw_dir,
+        path=raw_directory_path,
     )
 
     # ── Recursive unzip ───────────────────────────────────────────────────────
@@ -99,7 +85,7 @@ def acquire_data() -> None:
                 extracted = True
 
     print("\nUnzipping downloaded files (including nested zips)...")
-    _unzip_all(raw_dir)
+    _unzip_all(raw_directory_path)
 
     # ── Lichess ECO database ──────────────────────────────────────────────────
     print("\nDownloading Lichess ECO opening database from GitHub...")
@@ -120,9 +106,8 @@ def acquire_data() -> None:
 
     df_eco = pd.concat(frames, ignore_index=True)
     df_eco["moves_normalised"] = df_eco["pgn"].apply(_normalise_moves)
-    eco_path = os.path.join(external_dir, "eco_openings.csv")
-    df_eco.to_csv(eco_path, index=False)
-    print(f"  Saved ECO database → {eco_path}  ({len(df_eco):,} openings)")
+    df_eco.to_csv(eco_opening_path, index=False)
+    print(f"  Saved ECO database → {eco_opening_path}  ({len(df_eco):,} openings)")
 
     print("\nPhase 1a — Data Acquisition Complete.")
 
@@ -132,7 +117,7 @@ def acquire_data() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def parse_raw_files() -> tuple[pd.DataFrame, pd.DataFrame]:
+def parse_raw_files(raw_directory_path: str, intermediate_directory_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Parse the raw PGN and UCI files produced by acquire_data() into
     structured DataFrames and persist them to data/intermediate/.
@@ -143,14 +128,14 @@ def parse_raw_files() -> tuple[pd.DataFrame, pd.DataFrame]:
     parsed_data_pgn : DataFrame  → intermediate/parsed_data_pgn.csv
     """
     print("Parsing UCI file (data_uci.pgn)...")
-    parsed_data_uci = parse_uci(os.path.join(raw_dir, "data_uci.pgn"))
-    uci_path = os.path.join(intermediate_dir, "parsed_data_uci.csv")
+    parsed_data_uci = parse_uci(os.path.join(raw_directory_path, "data_uci.pgn"))
+    uci_path = os.path.join(intermediate_directory_path, "parsed_data_uci.csv")
     parsed_data_uci.to_csv(uci_path, index=False)
     print(f"  Saved → {uci_path}  {parsed_data_uci.shape}")
 
     print("\nParsing PGN file (data.pgn)...")
-    parsed_data_pgn = parse_pgn(os.path.join(raw_dir, "data.pgn"))
-    pgn_path = os.path.join(intermediate_dir, "parsed_data_pgn.csv")
+    parsed_data_pgn = parse_pgn(os.path.join(raw_directory_path, "data.pgn"))
+    pgn_path = os.path.join(intermediate_directory_path, "parsed_data_pgn.csv")
     parsed_data_pgn.to_csv(pgn_path, index=False)
     print(f"  Saved → {pgn_path}  {parsed_data_pgn.shape}")
 
@@ -163,6 +148,15 @@ def parse_raw_files() -> tuple[pd.DataFrame, pd.DataFrame]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    acquire_data()
-    parse_raw_files()
+    with open("configs/config.toml", "rb") as f:
+        config = tomllib.load(f)
+    
+    path_config = config["paths"]
+    raw_directory = path_config["raw_data_dir"]
+    intermediate_directory = path_config["intermediate_dir"]
+    output_config = config["output"]
+    eco_opening_path = output_config["output_eco_csv"]
+
+    acquire_data(raw_directory, eco_opening_path)
+    parse_raw_files(raw_directory, intermediate_directory)
     print("\n✓ Phase 1 Complete — proceed to validate_data.py")
