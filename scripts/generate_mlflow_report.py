@@ -11,6 +11,11 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List
 
+# Force UTF-8 output on Windows
+if sys.stdout.encoding != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # ── Path bootstrap ────────────────────────────────────────────────────────────
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.abspath(os.path.join(script_dir, ".."))
@@ -43,12 +48,12 @@ class StaticMLflowReportGenerator:
         }
         
         if not self.mlruns_dir.exists():
-            print("⚠ No mlruns directory found")
+            print("[WARN] No mlruns directory found")
             return data
         
         try:
             if mlflow is None:
-                print("⚠ MLflow not available, generating sample report")
+                print("[WARN] MLflow not available, generating sample report")
                 return data
             
             mlflow.set_tracking_uri(f"file:{self.mlruns_dir}")
@@ -83,15 +88,15 @@ class StaticMLflowReportGenerator:
                         data["total_runs"] += 1
                 
                 except Exception as e:
-                    print(f"⚠ Could not load runs for {exp.name}: {e}")
+                    print(f"[WARN] Could not load runs for {exp.name}: {e}")
                 
                 if exp_data["runs"]:
                     data["experiments"].append(exp_data)
             
-            print(f"✓ Loaded {data['total_runs']} MLflow runs from {len(data['experiments'])} experiments")
+            print(f"[OK] Loaded {data['total_runs']} MLflow runs from {len(data['experiments'])} experiments")
             
         except Exception as e:
-            print(f"⚠ Error loading MLflow data: {e}")
+            print(f"[WARN] Error loading MLflow data: {e}")
         
         return data
     
@@ -445,8 +450,8 @@ with mlflow.start_run():<br/>
     def write_html(self, html: str) -> Path:
         """Write HTML to file."""
         output_path = self.mlflow_dir / "index.html"
-        output_path.write_text(html)
-        print(f"✓ Generated {output_path}")
+        output_path.write_text(html, encoding='utf-8')
+        print(f"[OK] Generated {output_path}")
         return output_path
     
     def generate(self):
@@ -459,7 +464,7 @@ with mlflow.start_run():<br/>
         html = self.generate_html(mlflow_data)
         output_path = self.write_html(html)
         
-        print(f"\n✓ MLflow report ready: {output_path}")
+        print(f"\n[OK] MLflow report ready: {output_path}")
         print(f"  Size: {output_path.stat().st_size / 1024:.1f} KB")
         print(f"  Deploy to GitHub Pages: dist/mlflow/")
         print("\n" + "="*70)

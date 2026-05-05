@@ -10,6 +10,11 @@ from pathlib import Path
 import json
 from datetime import datetime
 
+# Force UTF-8 output on Windows
+if sys.stdout.encoding != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # ── Path bootstrap ────────────────────────────────────────────────────────────
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.abspath(os.path.join(script_dir, ".."))
@@ -39,9 +44,9 @@ class StaticDashboardGenerator:
         if merged_file.exists():
             try:
                 data["merged_games"] = pd.read_csv(merged_file, nrows=1000)
-                print(f"✓ Loaded {len(data['merged_games'])} rows from merged_games.csv")
+                print(f"[OK] Loaded {len(data['merged_games'])} rows from merged_games.csv")
             except Exception as e:
-                print(f"⚠ Could not load merged_games: {e}")
+                print(f"[WARN] Could not load merged_games: {e}")
         
         # Load model reports if they exist
         if self.reports_dir.exists():
@@ -49,9 +54,9 @@ class StaticDashboardGenerator:
                 try:
                     with open(report_file) as f:
                         data[report_file.stem] = f.read()
-                    print(f"✓ Loaded {report_file.name}")
+                    print(f"[OK] Loaded {report_file.name}")
                 except Exception as e:
-                    print(f"⚠ Could not load {report_file.name}: {e}")
+                    print(f"[WARN] Could not load {report_file.name}: {e}")
         
         return data
     
@@ -351,8 +356,8 @@ class StaticDashboardGenerator:
     def write_html(self, html: str) -> Path:
         """Write HTML to file."""
         output_path = self.dist_dir / "index.html"
-        output_path.write_text(html)
-        print(f"✓ Generated {output_path}")
+        output_path.write_text(html, encoding='utf-8')
+        print(f"[OK] Generated {output_path}")
         return output_path
     
     def generate(self):
@@ -365,7 +370,7 @@ class StaticDashboardGenerator:
         html = self.generate_html(data)
         output_path = self.write_html(html)
         
-        print(f"\n✓ Dashboard ready: {output_path}")
+        print(f"\n[OK] Dashboard ready: {output_path}")
         print(f"  Size: {output_path.stat().st_size / 1024:.1f} KB")
         print(f"  Deploy to GitHub Pages: dist/ directory")
         print("\n" + "="*70)
