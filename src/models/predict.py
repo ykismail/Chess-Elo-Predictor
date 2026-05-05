@@ -35,7 +35,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 ROOT        = Path(__file__).resolve().parents[2]
-DATA_PATH   = ROOT / "data" / "processed" / "merged_games.csv"
+DATA_PATH   = ROOT / "data" / "intermediate" / "merged_games.csv"
 CONFIG_PATH = ROOT / "configs" / "model_params.json"
 MODELS_DIR  = ROOT / "models"
 REPORTS_DIR = ROOT / "reports" / "results"
