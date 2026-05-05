@@ -63,6 +63,31 @@ jobs:
         python -m poetry run pytest ${{ matrix.test-file }} --tb=short -v --maxfail=999 || true
       continue-on-error: true
 
+    - name: Run Integration Tests
+      run: |
+        python -m poetry run pytest tests/test_integration_pipeline.py -v --tb=short -s || true
+      continue-on-error: true
+
+    - name: Run All Tests with Coverage
+      run: |
+        python -m poetry run pytest tests/ --cov=src --cov-report=html:reports/coverage/html --cov-report=xml:reports/coverage/coverage.xml --cov-report=term-missing --junitxml=reports/junit-results.xml || true
+      continue-on-error: true
+
+    - name: Generate Test Reports
+      run: |
+        python -m poetry run python scripts/generate_test_report.py
+      continue-on-error: true
+
+    - name: Upload Test and Coverage Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-reports
+        path: |
+          reports/coverage/
+          reports/test-results/
+          reports/junit-results.xml
+      if: always()
+
     - name: Run Data Pipeline (All Phases)
       run: |
         make pipeline
@@ -161,16 +186,14 @@ jobs:
       - name: Install dependencies
         run: python -m poetry install
 
-      - name: Install stlite-cli
-        run: python -m poetry run pip install stlite-cli
+      - name: Generate Static Dashboard
+        run: python -m poetry run python scripts/generate_static_dashboard.py
 
-      - name: Build static site
-        run: python -m poetry run stlite build src/visualization/dashboard.py --dest dist
-
-
-      # - name: Build static site
-      #   run: |
-      #     python -m poetry run stlite build src/visualization/dashboard.py --dest dist
+      - name: Copy Reports to Static Site
+        run: |
+          Copy-Item -Path "reports/coverage" -Destination "dist/coverage" -Recurse -Force
+          Copy-Item -Path "reports/test-results" -Destination "dist/test-results" -Recurse -Force
+        shell: pwsh
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
