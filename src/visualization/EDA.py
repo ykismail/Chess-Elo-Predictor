@@ -15,24 +15,17 @@ if project_dir not in sys.path:
 # Set visual styling
 sns.set_theme(style="whitegrid", palette="muted")
 
-def plot_match_outcomes(df: pd.DataFrame, output_dir: str):
+# Target Variable Distribution (elo_bucket_white_categorical)
+def plot_target_variable_distribution(df: pd.DataFrame, output_dir: str):
     plt.figure(figsize=(8, 5))
-    ax = sns.countplot(data=df, x='winner_multiclass', order=[2, 1, 0], palette=['#4C72B0', '#C44E52', '#55A868'])
-    plt.title('Distribution of Match Outcomes (Target)', fontsize=14)
-    plt.xticks(ticks=[0, 1, 2], labels=['White Wins (2)', 'Draw (1)', 'Black Wins (0)'])
-    plt.ylabel('Number of Games')
-
-    # Add percentage labels
-    total = len(df)
-    for p in ax.patches:
-        percentage = f'{100 * p.get_height() / total:.1f}%'
-        x = p.get_x() + p.get_width() / 2 - 0.1
-        y = p.get_height() + 200
-        ax.annotate(percentage, (x, y), size=12)
-    
-    plt.savefig(os.path.join(output_dir, "match_outcomes.png"), bbox_inches="tight")
+    sns.countplot(data=df, x="elo_bucket_white_categorical", color="#4C72B0")
+    plt.title("Distribution of Target Variable: Elo Buckets (White Player)", fontsize=14)
+    plt.xlabel("Elo Bucket (White Player)")
+    plt.ylabel("Number of Games")
+    # plt.show()
+    plt.savefig(os.path.join(output_dir, "target_variable_distribution.png"), bbox_inches="tight")
     plt.close()
-
+# Feature-to-Target — Skill Gap vs. Outcome
 def plot_win_rate_by_elo_gap(df: pd.DataFrame, output_dir: str):
     # Bin the Elo gap for visualization
     df_plot = df.copy()
@@ -52,17 +45,19 @@ def plot_win_rate_by_elo_gap(df: pd.DataFrame, output_dir: str):
     plt.savefig(os.path.join(output_dir, "win_rate_elo_gap.png"), bbox_inches="tight")
     plt.close()
 
+# Feature-to-Target — Engine Accuracy Gap (ACL)
 def plot_acl_gap(df_sf: pd.DataFrame, output_dir: str):
     plt.figure(figsize=(10, 6))
-    sns.boxplot(data=df_sf, x='winner_multiclass', y='acl_gap', palette=['#55A868', '#C44E52', '#4C72B0'])
+    sns.boxplot(data=df_sf, x='winner_multiclass', y='acl_gap', hue='winner_multiclass', palette=['#55A868', '#C44E52', '#4C72B0'], legend=False)
     plt.title('Average Centipawn Loss Gap by Winner', fontsize=14)
     plt.xticks(ticks=[0, 1, 2], labels=['Black Wins', 'Draw', 'White Wins'])
     plt.ylabel('ACL Gap (White ACL - Black ACL)')
-    plt.ylim(-150, 150) # Zooming in to exclude extreme outliers
+    plt.ylim(-150, 150) 
     
     plt.savefig(os.path.join(output_dir, "acl_gap.png"), bbox_inches="tight")
     plt.close()
 
+# Game Dynamics — Sharpness vs. Draws
 def plot_game_sharpness(df_sf: pd.DataFrame, output_dir: str):
     plt.figure(figsize=(10, 6))
     sns.kdeplot(data=df_sf, x='game_sharpness', hue='winner_multiclass', fill=True, common_norm=False, alpha=0.4, palette=['#55A868', '#C44E52', '#4C72B0'])
@@ -74,6 +69,7 @@ def plot_game_sharpness(df_sf: pd.DataFrame, output_dir: str):
     plt.savefig(os.path.join(output_dir, "game_sharpness.png"), bbox_inches="tight")
     plt.close()
 
+# Openings — Does the First Move Matter?
 def plot_white_win_rate_eco(df: pd.DataFrame, output_dir: str):
     # Get top 10 opening families by volume
     top_openings = df['eco_family'].value_counts().index[:10]
@@ -89,32 +85,62 @@ def plot_white_win_rate_eco(df: pd.DataFrame, output_dir: str):
     plt.savefig(os.path.join(output_dir, "white_win_rate_eco.png"), bbox_inches="tight")
     plt.close()
 
+# Customer Segmentation: ECO Win Rate by Elo Bucket
+def plot_eco_win_rate_by_elo(df: pd.DataFrame, output_dir: str):
+    # Filter to the top 5 ECO families to keep the chart readable (A, B, C, D, E)
+    top_openings = df['eco_family'].value_counts().index[:5]
+    df_filtered = df[df['eco_family'].isin(top_openings)].copy()
+
+    # Ensure Elo buckets are treated as categorical strings for the legend
+    df_filtered['elo_bucket'] = df_filtered['elo_bucket_white_categorical'].astype(str)
+
+    plt.figure(figsize=(12, 7))
+    sns.barplot(
+        data=df_filtered, 
+        x='eco_family', 
+        y='winner_binary', 
+        hue='elo_bucket',
+        order=top_openings,
+        palette='viridis',
+        errorbar=None # Clean look without error bars for business presentations
+    )
+    
+    plt.title('White Win Rate by ECO Family & Elo Bucket (Customer Segmentation)', fontsize=14)
+    plt.xlabel('ECO Family (A-E)')
+    plt.ylabel('White Win Rate')
+    
+    # Move legend outside the plot
+    plt.legend(title='Elo Bucket (White)', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.axhline(y=df['winner_binary'].mean(), color='red', linestyle='--', alpha=0.5, label='Global Average')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "eco_win_rate_by_elo.png"), bbox_inches="tight")
+    plt.close()
+
+
 def main():
 
-    
-    # Check if we should use `figures_dir` from config or just results/figures
-    # `results/figures` was explicitly asked by user
     figures_dir = os.path.join(project_dir, "reports/figures")
     os.makedirs(figures_dir, exist_ok=True)
 
     intermediate_dir = os.path.join(project_dir, "data", "intermediate")
     merged_games_path = os.path.join(intermediate_dir, "merged_games.csv")
     
-    # Load the dataset
-    df = pd.read_csv(merged_games_path)
+    df = pd.read_csv(merged_games_path, low_memory=False)
 
-    # Separate a dataframe for Stockfish-only analysis (ignoring Lichess missing data)
+    # Separate a dataframe for Stockfish-only analysis 
     df_sf = df[df['has_stockfish'] == True].copy()
     
     print(f"Total Games: {df.shape[0]:,}")
     print(f"Games with Stockfish Analysis: {df_sf.shape[0]:,}")
     
     print(f"Saving plots to {figures_dir} ...")
-    plot_match_outcomes(df, figures_dir)
+    plot_target_variable_distribution(df, figures_dir)
     plot_win_rate_by_elo_gap(df, figures_dir)
     plot_acl_gap(df_sf, figures_dir)
     plot_game_sharpness(df_sf, figures_dir)
     plot_white_win_rate_eco(df, figures_dir)
+    plot_eco_win_rate_by_elo(df, figures_dir)
     print("Done.")
 
 if __name__ == "__main__":
