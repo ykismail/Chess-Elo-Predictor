@@ -10,7 +10,10 @@ jobs:
   ci:
     env:
       PYTHONUTF8: "1"   
-      PYTHONIOENCODING: "utf-8" 
+      PYTHONIOENCODING: "utf-8"
+      MLFLOW_TRACKING_URI: "file:./mlruns"
+      MLFLOW_BACKEND_STORE_URI: "file:./mlruns"
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: "./mlruns/artifacts"
     runs-on: windows-latest
     strategy:
       matrix:
@@ -64,6 +67,13 @@ jobs:
       run: |
         make pipeline
 
+    - name: Upload MLflow Run Data
+      uses: actions/upload-artifact@v4
+      with:
+        name: mlflow-runs
+        path: mlruns/
+      if: always()
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -72,8 +82,55 @@ jobs:
           data/intermediate/
           reports/results/
 
+  mlflow-registry:
+    needs: ci
+    if: github.ref == 'refs/heads/Abdelrahman' && github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.14.4'
+
+      - name: Install Poetry and MLflow
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry mlflow
+
+      - name: Download MLflow runs
+        uses: actions/download-artifact@v4
+        with:
+          name: mlflow-runs
+          path: mlruns/
+
+      - name: Log and register best models
+        run: |
+          python -c "
+          import mlflow
+          import json
+          from pathlib import Path
+          
+          mlflow.set_tracking_uri('file:./mlruns')
+          
+          # Search all experiments
+          experiments = mlflow.search_experiments()
+          registered_count = 0
+          
+          for experiment in experiments:
+              runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id], order_by=['metrics.accuracy DESC'])
+              if len(runs) > 0:
+                  best_run = runs.iloc[0]
+                  print(f'Best run in {experiment.name}: {best_run.run_id} (accuracy: {best_run[\"metrics.accuracy\"]:.4f})')
+                  registered_count += 1
+          
+          print(f'\\nFound {registered_count} experiments with tracked models')
+          "
+        continue-on-error: true
+
   cd:
-    # needs: ci
+    needs: ci
     if: github.ref == 'refs/heads/Abdelrahman' && github.event_name == 'push'
     runs-on: windows-latest
     permissions:
@@ -104,17 +161,11 @@ jobs:
       - name: Install dependencies
         run: python -m poetry install
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-    
-      - name: Install stlite
-        run: npm install -g stlite
+      - name: Install stlite-cli
+        run: python -m poetry run pip install stlite-cli
 
       - name: Build static site
-        run: stlite build src/visualization/dashboard.py --dest dist
+        run: python -m poetry run stlite build src/visualization/dashboard.py --dest dist
 
 
       # - name: Build static site
