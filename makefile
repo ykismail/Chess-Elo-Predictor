@@ -2,7 +2,7 @@
 # ====================================================
 # Orchestrates data loading, validation, transformation, and feature engineering.
 
-.PHONY: help setup pipeline phase1 validate-phase1 phase2 validate-phase2 phase3 validate-phase3 phase4 train phase5 predict clean test lint format isort lint-all
+.PHONY: help setup pipeline phase1 validate-phase1 phase2 validate-phase2 phase3 validate-phase3 phase4 train phase5 predict clean test test-unit test-integration test-coverage test-report dashboard mlflow-report lint format isort lint-all
 
 PYTHON ?= python
 CONFIG ?= configs/config.toml
@@ -25,8 +25,16 @@ help:
 	@echo "  make train           - Phase 4: Train Models"
 	@echo "  make predict         - Phase 5: Make Predictions"
 	@echo "  make pipeline        - Run entire pipeline (Phases 1-3 with validations)"
+	@echo "Testing & Reports:"
+	@echo "  make test            - Run all tests with coverage"
+	@echo "  make test-unit       - Unit tests only"
+	@echo "  make test-integration - Integration tests only"
+	@echo "  make test-coverage   - Detailed coverage report"
+	@echo "  make test-report     - Generate HTML test reports"
+	@echo "Deployment:"
+	@echo "  make dashboard       - Generate static HTML dashboard for GitHub Pages"
+	@echo "  make mlflow-report   - Generate static MLflow experiment report"
 	@echo "Code Quality:"
-	@echo "  make test            - Run pytest"
 	@echo "  make lint            - Run flake8"
 	@echo "  make format          - Format with black"
 	@echo "  make isort           - Sort imports with isort"
@@ -132,7 +140,7 @@ predict: phase5
 # ────────────────────────────────────────────────────────────────────────────
 # Full Pipeline (Phases 1-3 with validations interleaved)
 # ────────────────────────────────────────────────────────────────────────────
-pipeline: clean phase1 validate-phase1 phase2 validate-phase2 phase3 validate-phase3
+pipeline: clean phase1 validate-phase1 phase2 validate-phase2 phase3 validate-phase3 phase4 phase5
 	@echo "================================================================================"
 	@echo "  DATA PIPELINE COMPLETE"
 	@echo "================================================================================"
@@ -146,7 +154,37 @@ pipeline: clean phase1 validate-phase1 phase2 validate-phase2 phase3 validate-ph
 # Code Quality Checks
 # ────────────────────────────────────────────────────────────────────────────
 test:
-	-python -m poetry run pytest tests/ --tb=short -v --maxfail=999 || true
+	@echo "Running all unit and integration tests with coverage..."
+	python -m poetry run pytest tests/ --tb=short -v --maxfail=999 --cov=src --cov-report=html:reports/coverage/html --cov-report=xml:reports/coverage/coverage.xml --cov-report=term-missing --junitxml=reports/junit-results.xml || true
+	@echo "✓ Tests complete. Coverage report: reports/coverage/html/index.html"
+
+test-unit:
+	@echo "Running unit tests only (excluding integration tests)..."
+	python -m poetry run pytest tests/test_*.py --ignore=tests/test_integration_pipeline.py -v --tb=short || true
+
+test-integration:
+	@echo "Running integration tests only..."
+	python -m poetry run pytest tests/test_integration_pipeline.py -v --tb=short -s || true
+
+test-coverage:
+	@echo "Running tests with detailed coverage report..."
+	python -m poetry run pytest tests/ --cov=src --cov-report=html:reports/coverage/html --cov-report=term-missing -v || true
+
+test-report:
+	@echo "Generating test execution and coverage reports..."
+	python -m poetry run python scripts/generate_test_report.py
+	@echo "✓ Reports generated in reports/test-results/"
+
+dashboard:
+	@echo "Generating static HTML dashboard..."
+	python -m poetry run python scripts/generate_static_dashboard.py
+	@echo "✓ Dashboard generated in dist/"
+	@echo "  Open in browser: dist/index.html"
+
+mlflow-report:
+	@echo "Generating static MLflow reports..."
+	python -m poetry run python scripts/generate_mlflow_report.py
+	@echo "✓ MLflow report generated in dist/mlflow/"
 
 lint:
 	@echo "Running flake8 linter..."

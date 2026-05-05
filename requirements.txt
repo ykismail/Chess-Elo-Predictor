@@ -1,0 +1,10 @@
+pandas<3.0.0
+numpy>=2.4.4,<3.0.0
+xgboost>=3.2.0,<4.0.0
+scikit-learn>=1.8.0,<2.0.0
+python-chess>=1.999,<2.0
+mlflow>=3.10.1,<4.0.0
+kaggle>=2.1.0,<3.0.0
+imbalanced-learn>=0.14.1,<0.15.0
+streamlit>=1.35.0
+plotly>=5.0.0
