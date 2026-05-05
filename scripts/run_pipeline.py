@@ -58,7 +58,7 @@ def main():
     df_uci = parse_uci(p["uci_file"])
 
     print("\nStep 5 — Stockfish features")
-    df_sf = extract_stockfish_features(p["stockfish_file"])
+    df_sf = extract_stockfish_features(p["stockfish_file"])       
 
     print("\nStep 6 — Merge")
     df = merge_datasets(df_pgn, df_uci, df_sf)
