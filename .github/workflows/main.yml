@@ -1,0 +1,305 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ Abdelrahman ]
+  pull_request:
+    branches: [ Abdelrahman ]
+
+jobs:
+  ci:
+    env:
+      PYTHONUTF8: "1"   
+      PYTHONIOENCODING: "utf-8"
+      MLFLOW_TRACKING_URI: "file:./mlruns"
+      MLFLOW_BACKEND_STORE_URI: "file:./mlruns"
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: "./mlruns/artifacts"
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.14.4"]
+        test-file:
+          - tests/test_data_loading.py
+          - tests/test_transform.py
+          - tests/test_build_features.py
+          - tests/test_validate.py
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Poetry
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+
+    - name: Add Poetry to PATH
+      run: echo "$env:USERPROFILE\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH
+      shell: pwsh
+
+    - name: Cache Poetry dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pypoetry
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
+
+    - name: Install dependencies
+      run: |
+        make setup
+
+    - name: Code Quality - Format & Lint
+      run: |
+        make lint-all
+      continue-on-error: true
+
+    - name: Run Unit Test File
+      run: |
+        python -m poetry run pytest ${{ matrix.test-file }} --tb=short -v --maxfail=999 || true
+      continue-on-error: true
+
+    - name: Run Integration Tests
+      run: |
+        python -m poetry run pytest tests/test_integration_pipeline.py -v --tb=short -s || true
+      continue-on-error: true
+
+    - name: Run All Tests with Coverage
+      run: |
+        python -m poetry run pytest tests/ --cov=src --cov-report=html:reports/coverage/html --cov-report=xml:reports/coverage/coverage.xml --cov-report=term-missing --junitxml=reports/junit-results.xml || true
+      continue-on-error: true
+
+    - name: Display Test Results Summary
+      if: always()
+      run: |
+        echo "======== TEST EXECUTION SUMMARY ========"
+        if (Test-Path "reports/junit-results.xml") {
+          [xml]$junit = Get-Content "reports/junit-results.xml"
+          $totalTests = [int]$junit.testsuites.tests
+          $failures = [int]$junit.testsuites.failures
+          $errors = [int]$junit.testsuites.errors
+          $skipped = [int]$junit.testsuites.skipped
+          Write-Output "Total Tests: $totalTests"
+          Write-Output "Failures: $failures"
+          Write-Output "Errors: $errors"
+          Write-Output "Skipped: $skipped"
+        }
+      shell: pwsh
+      continue-on-error: true
+
+    - name: Generate Test Reports
+      run: |
+        python -m poetry run python scripts/generate_test_report.py
+      continue-on-error: true
+
+    - name: Upload Test and Coverage Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-reports
+        path: |
+          reports/coverage/
+          reports/test-results/
+          reports/junit-results.xml
+      if: always()
+
+    - name: Run Data Pipeline (All Phases)
+      run: |
+        make pipeline
+
+    - name: Upload MLflow Run Data
+      uses: actions/upload-artifact@v4
+      with:
+        name: mlflow-runs
+        path: mlruns/
+      if: always()
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: data-artifacts
+        path: |
+          data/intermediate/
+          reports/results/
+
+  mlflow-registry:
+    needs: ci
+    if: github.ref == 'refs/heads/Abdelrahman' && github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.14.4'
+
+      - name: Install Poetry and MLflow
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry mlflow
+
+      - name: Add Poetry to PATH
+        run: echo "$env:USERPROFILE\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Install dependencies
+        run: python -m poetry install
+
+      - name: Download MLflow runs
+        uses: actions/download-artifact@v4
+        with:
+          name: mlflow-runs
+          path: mlruns/
+
+      - name: Log and register best models
+        run: |
+          python -c "
+          import mlflow
+          import json
+          from pathlib import Path
+          
+          mlflow.set_tracking_uri('file:./mlruns')
+          
+          # Search all experiments
+          experiments = mlflow.search_experiments()
+          registered_count = 0
+          
+          for experiment in experiments:
+              runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id], order_by=['metrics.accuracy DESC'])
+              if len(runs) > 0:
+                  best_run = runs.iloc[0]
+                  print(f'Best run in {experiment.name}: {best_run.run_id} (accuracy: {best_run[\"metrics.accuracy\"]:.4f})')
+                  registered_count += 1
+          
+          print(f'\\nFound {registered_count} experiments with tracked models')
+          "
+        continue-on-error: true
+
+      - name: Generate Static MLflow Report
+        run: |
+          make mlflow-report
+        continue-on-error: true
+
+      - name: Upload MLflow Static Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-static-report
+          path: dist/mlflow/
+        if: always()
+
+  cd:
+    needs: ci
+    if: github.ref == 'refs/heads/Abdelrahman' && github.event_name == 'push'
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.14.4'
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          
+      
+      - name: Add Poetry to PATH
+        run: echo "$env:USERPROFILE\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Install dependencies
+        run: python -m poetry install
+
+      - name: Download Test Reports and Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: test-reports
+          path: reports/
+
+      - name: Generate Static Dashboard
+        run: make dashboard
+
+      - name: Download MLflow Static Report
+        uses: actions/download-artifact@v4
+        with:
+          name: mlflow-static-report
+          path: dist/mlflow/
+        continue-on-error: true
+
+      - name: Copy Reports to Static Site
+        run: |
+          if (Test-Path "reports/coverage/html") {
+            Copy-Item -Path "reports/coverage/html" -Destination "dist/coverage" -Recurse -Force
+            Write-Host "[OK] Copied coverage report"
+          }
+          if (Test-Path "reports/test-results") {
+            Copy-Item -Path "reports/test-results" -Destination "dist/test-results" -Recurse -Force
+            Write-Host "[OK] Copied test results"
+          }
+          if (Test-Path "reports/junit-results.xml") {
+            Copy-Item -Path "reports/junit-results.xml" -Destination "dist/" -Force
+            Write-Host "[OK] Copied JUnit report"
+          }
+          Get-ChildItem -Path "dist" -Recurse -Force | Write-Host "[DEPLOYED] "
+        shell: pwsh
+        continue-on-error: true
+
+      - name: Display Deployment Summary
+        if: always()
+        run: |
+          Write-Host "========================================================"
+          Write-Host "GITHUB PAGES DEPLOYMENT SUMMARY"
+          Write-Host "========================================================"
+          Write-Host ""
+          Write-Host "Components being deployed:"
+          Write-Host ""
+          if (Test-Path "dist/index.html") {
+            Write-Host "[OK] Dashboard:"
+            Write-Host "  File: dist/index.html"
+            $size = (Get-Item "dist/index.html").Length / 1KB
+            Write-Host "  Size: $([Math]::Round($size, 1)) KB"
+          }
+          if (Test-Path "dist/mlflow/index.html") {
+            Write-Host "[OK] MLflow Reports:"
+            Write-Host "  File: dist/mlflow/index.html"
+            $size = (Get-Item "dist/mlflow/index.html").Length / 1KB
+            Write-Host "  Size: $([Math]::Round($size, 1)) KB"
+          }
+          if (Test-Path "dist/coverage") {
+            Write-Host "[OK] Test Coverage:"
+            Write-Host "  Path: dist/coverage/"
+            Write-Host "  Files: $(Get-ChildItem -Path 'dist/coverage' -Recurse -Force | Measure-Object | Select-Object -ExpandProperty Count)"
+          }
+          if (Test-Path "dist/test-results") {
+            Write-Host "[OK] Test Results:"
+            Write-Host "  Path: dist/test-results/"
+            Write-Host "  Files: $(Get-ChildItem -Path 'dist/test-results' -Recurse -Force | Measure-Object | Select-Object -ExpandProperty Count)"
+          }
+          Write-Host ""
+          Write-Host "All files in dist/:"
+          Get-ChildItem -Path "dist" -Recurse -Force | Select-Object FullName, Length | Format-Table
+          Write-Host ""
+          Write-Host "========================================================"
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

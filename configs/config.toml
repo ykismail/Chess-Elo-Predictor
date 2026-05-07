@@ -5,36 +5,132 @@ team    = "Team 12"
 
 [paths]
 raw_data_dir       = "data/raw"
-interim_data_dir   = "data/interim"
-processed_data_dir = "data/processed"
+intermediate_dir   = "data/intermediate"
 external_data_dir  = "data/external"
 models_dir         = "models"
 reports_dir        = "reports"
 figures_dir        = "reports/figures"
 
-[data]
-pgn_file              = "data/raw/data.pgn"
-uci_file              = "data/raw/data_uci.pgn"
-stockfish_file        = "data/raw/stockfish.csv"
-lichess_file          = "data/raw/chess_games.csv"
-lichess_sf_file       = "data/raw/lichess_stockfish.csv"
-eco_file              = "data/external/eco_openings.csv"
-games_output          = "data/processed/games.csv"
-merged_output         = "data/processed/merged_games.csv"
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 1: Data Loading & Parsing
+# ─────────────────────────────────────────────────────────────────────────────
+[phase1]
+name = "data_loading"
+description = "Download raw data sources, parse PGN/UCI files"
 
+# Inputs (downloaded from Kaggle + GitHub)
+input_pgn_file        = "data/raw/data.pgn"
+input_uci_file        = "data/raw/data_uci.pgn"
+input_stockfish_file  = "data/raw/stockfish.csv"
+input_lichess_file    = "data/raw/chess_games.csv"
+input_lichess_sf_file = "data/raw/lichess_stockfish.csv"
+
+# Outputs
+output_parsed_uci_csv  = "data/intermediate/parsed_data_uci.csv"
+output_parsed_pgn_csv  = "data/intermediate/parsed_data_pgn.csv"
+output_eco_csv         = "data/external/eco_openings.csv"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 2: Data Validation (read-only)
+# ─────────────────────────────────────────────────────────────────────────────
+[phase2]
+name = "validate"
+description = "Quality checks on Phase 1 outputs"
+
+# Validation reports (no data written, only read from Phase 1 outputs)
+report_sources  = "reports/results/validation_sources.txt"
+report_merged   = "reports/results/validation_merged.txt"
+report_features = "reports/results/validation_features.txt"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 2: Data Transformation & Merging
+# ─────────────────────────────────────────────────────────────────────────────
+[phase2]
+name = "transform"
+description = "ECO matching, Stockfish extraction, three-way merge"
+
+# Inputs (from Phase 1)
+input_parsed_uci_csv  = "data/intermediate/parsed_data_uci.csv"
+input_parsed_pgn_csv  = "data/intermediate/parsed_data_pgn.csv"
+input_eco_csv         = "data/external/eco_openings.csv"
+input_stockfish_file  = "data/raw/stockfish.csv"
+
+# Output (PGN + UCI + Stockfish merged)
+output_kaggle_merged  = "data/intermediate/kaggle_merged.csv"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 3: Feature Engineering & Integration
+# ─────────────────────────────────────────────────────────────────────────────
+[phase3]
+name = "build_features"
+description = "Feature engineering, Lichess integration, final outputs"
+
+# Inputs (from Phase 2)
+input_kaggle_merged   = "data/intermediate/kaggle_merged.csv"
+input_lichess_file    = "data/raw/chess_games.csv"
+input_lichess_sf_file = "data/raw/lichess_stockfish.csv"
+
+# Final outputs
+output_games_csv      = "data/intermediate/games.csv"
+output_merged_games   = "data/intermediate/merged_games.csv"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 4: Model Training
+# ─────────────────────────────────────────────────────────────────────────────
+[phase4]
+name = "train"
+description = "Train multiple models with hyperparameter tuning"
+
+# Input (from Phase 3)
+input_merged_games    = "data/intermediate/merged_games.csv"
+
+# Outputs
+models_dir            = "models"
+reports_dir           = "reports/results"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 5: Model Prediction
+# ─────────────────────────────────────────────────────────────────────────────
+[phase5]
+name = "predict"
+description = "Make predictions using trained models"
+
+# Input (from Phase 4)
+input_merged_games    = "data/intermediate/merged_games.csv"
+
+# Model selection (default: random_forest_track_b)
+default_model         = "random_forest_track_b"
+
+# Output
+predictions_dir       = "reports/results"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature Engineering & Target Variables
+# ─────────────────────────────────────────────────────────────────────────────
 [target]
-column       = "elo_bucket_white_enc"
+column       = "elo_bucket_white_categorical"
 classes      = ["Beginner", "Intermediate", "Advanced", "Expert", "Master"]
 elo_bins     = [0, 1000, 1500, 2000, 2500, 9999]
 
+[features]
+elo_gap_enabled             = true
+acl_gap_enabled             = true
+winner_binary_enabled       = true
+winner_multiclass_enabled   = true
+elo_bucket_enabled          = true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Preprocessing & Modeling
+# ─────────────────────────────────────────────────────────────────────────────
 [preprocessing]
 test_size        = 0.30
 val_size         = 0.50
 random_state     = 42
 impute_strategy  = "median"
 leakage_cols     = [
-    "white_elo", "elo_gap", "avg_elo",
-    "elo_bucket_white", "elo_bucket_black", "elo_bucket_black_enc",
+    "white_elo", "black_elo", "elo_gap", "avg_elo",
+    "elo_bucket_white", "elo_bucket_black",
+    "elo_bucket_white_categorical", "elo_bucket_black_categorical",
     "winner_binary", "winner_multiclass",
     "event_id", "source",
     "moves_san", "moves_uci", "moves_pgn", "opening_name"

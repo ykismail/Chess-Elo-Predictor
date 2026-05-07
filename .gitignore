@@ -1,5 +1,4 @@
 # Data — never commit raw data
-data/raw/
 data/processed/
 data/interim/
 data/external/
@@ -30,4 +29,5 @@ models/*.joblib
 .DS_Store
 Thumbs.db
 
+stockfish_preprocessing/stockfish
 stockfish_preprocessing/stockfish
